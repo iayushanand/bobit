@@ -23,6 +23,11 @@ class BoBit(commands.Bot):
 
     async def setup_hook(self):
         await self.db.connect()
+        cog_files = os.listdir("cogs")
+        for file in cog_files:
+            if file.endswith(".py"):
+                ext = await self.load_extension(f"cogs.{file[:-3]}")
+                self.log.info(f"Loaded → {file[:-3]}")
 
     async def on_ready(self):
         self.log.success(f"Logged in as : {self.user.name}")
