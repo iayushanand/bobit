@@ -25,12 +25,10 @@ class BoBit(commands.Bot):
         await self.db.connect()
 
     async def on_ready(self):
-        print("Logged in as : {0}".format(self.user.name))
-         
+        self.log.success(f"Logged in as : {self.user.name}")
 
     async def close(self):
         await self.db.close()
-        self.log.success("[Disconnected from Database]")
         await super().close()
 
     def runbot(self):

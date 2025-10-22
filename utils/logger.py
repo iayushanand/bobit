@@ -36,16 +36,16 @@ class Logger:
         self._write_to_file(plain_output)
 
     def info(self, *message):
-        self._log("[INFO]: ", Fore.CYAN, *message)
+        self._log("INFO", Fore.CYAN, *message)
 
     def success(self, *message):
-        self._log("[SUCCESS]: ", Fore.GREEN, *message)
+        self._log("SUCCESS", Fore.GREEN, *message)
 
     def warning(self, *message):
-        self._log("[WARNING]: ", Fore.YELLOW, *message)
+        self._log("WARNING", Fore.YELLOW, *message)
 
     def error(self, *message):
-        self._log("[ERROR]: ", Fore.RED, *message)
+        self._log("ERROR", Fore.RED, *message)
 
     def debug(self, *message):
-        self._log("[DEBUG]: ", Fore.MAGENTA, *message)
+        self._log("DEBUG", Fore.MAGENTA, *message)
