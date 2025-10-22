@@ -7,7 +7,7 @@ class Moderation(commands.Cog):
         self.bot = bot
     
     @commands.command(name = "kick")
-    async def kick(self, ctx: commands.Context):
+    async def kick(self, ctx: commands.Context, member: discord.Member, reason: str = None):
         ...
 
 
