@@ -12,13 +12,21 @@ class Listeners(commands.Cog):
     
     @commands.Cog.listener(name = "on_member_join")
     async def member_join(self, member: discord.Member):
-        pfp = BytesIO(await member.display_avatar.read())
-        username = member.name
-
-        welcomer = WeclomeBanner().make_banner(username, pfp)
-
         welcome_channel =  member.guild.get_channel(1430077291165388821)
-        await welcome_channel.send(file=welcomer)
+        
+        
+        """ === For Banner === """
+
+        # pfp = BytesIO(await member.display_avatar.read())
+        # username = member.name
+
+        # welcomer = WeclomeBanner().make_banner(username, pfp)
+
+        # await welcome_channel.send(file=welcomer)
+
+
+        """ === For Simple Message === """
+        await welcome_channel.send(f"-# Welcome to server {member.mention}")
 
 
 
