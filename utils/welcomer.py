@@ -1,5 +1,6 @@
 from PIL import Image, ImageDraw, ImageFont, ImageChops
 import discord
+from io import BytesIO
 
 
 class WeclomeBanner():
@@ -22,9 +23,9 @@ class WeclomeBanner():
         return pfp
 
 
-    def make_banner(self):
+    def make_banner(self, username, pfp):
 
-        pfp = Image.open("avatar.png")
+        pfp = Image.open(pfp)
         bg = Image.open("assets/images/background.png")        
         pfp = self.circle(pfp)
 
@@ -33,7 +34,6 @@ class WeclomeBanner():
 
 
         header = "Welcome to BIT"
-        username = "iayuwu"
 
 
         bg.paste(pfp, ((bx//2)-(pfp.size[0]//2), by//4), pfp)
@@ -44,8 +44,8 @@ class WeclomeBanner():
         draw.text((bx//2, by-by//6), username, fill="#ffff", anchor="mm", font=self.font["username"])
 
 
-        bg.show()
-
-
-
-WeclomeBanner().make_banner()
+        with BytesIO() as image_binary:
+            bg.save(image_binary, "PNG")
+            image_binary.seek(0)
+            file = discord.File(fp = image_binary, filename="welcome.png")
+            return file

@@ -4,6 +4,7 @@ import os
 from dotenv import load_dotenv
 from utils.database import Database
 from utils.logger import Logger
+import jishaku
 load_dotenv()
 
 class BoBit(commands.Bot):
@@ -23,11 +24,15 @@ class BoBit(commands.Bot):
 
     async def setup_hook(self):
         await self.db.connect()
+        await self.load_extension("jishaku")
+        os.environ['JISHAKU_NO_UNDERSCORE'] = 'True'
+        os.environ['JISHAKU_RETAIN'] = 'True'
+        self.log.info(f"Loaded → Jishaku")
         cog_files = os.listdir("cogs")
         for file in cog_files:
             if file.endswith(".py"):
                 ext = await self.load_extension(f"cogs.{file[:-3]}")
-                self.log.info(f"Loaded → {file[:-3]}")
+                self.log.info(f"Loaded → {file[:-3].title()}")
 
     async def on_ready(self):
         self.log.success(f"Logged in as : {self.user.name}")
