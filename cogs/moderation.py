@@ -117,8 +117,8 @@ class Moderation(commands.Cog):
             channel=ctx.channel
         )
 
-    @commands.command(name="slowmode")
-    async def slowmode(self, ctx, seconds: int):
+    @commands.command(name="slowmode",aliases=["sm"])
+    async def slowmode(self, ctx, seconds: int = 0):
         await ctx.channel.edit(slowmode_delay=seconds)
 
         embed = discord.Embed(
