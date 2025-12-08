@@ -14,7 +14,6 @@ WARN_COLOR = 0xFEE75C
 class Moderation(commands.Cog):
     def __init__(self, bot: BoBit):
         self.bot = bot
-        self.col = bot.col
 
     async def log_action(
         self,
@@ -146,7 +145,7 @@ class Moderation(commands.Cog):
             "timestamp": int(time.time())
         }
 
-        await self.col.update_one(
+        await self.bot.db.collection.update_one(
             {"_id": member.id},
             {"$push": {"warns": warn_data}},
             upsert=True
@@ -170,7 +169,7 @@ class Moderation(commands.Cog):
 
     @commands.command(name="warns")
     async def warns(self, ctx, member: discord.Member):
-        doc = await self.col.find_one({"_id": member.id})
+        doc = await self.bot.db.collection.find_one({"_id": member.id})
         warns = doc["warns"] if doc else []
 
         embed = discord.Embed(
@@ -195,14 +194,14 @@ class Moderation(commands.Cog):
 
     @commands.command(name="warnremove")
     async def warnremove(self, ctx, member: discord.Member, index: int):
-        doc = await self.col.find_one({"_id": member.id})
+        doc = await self.bot.db.collection.find_one({"_id": member.id})
         if not doc:
             return
 
         warns = doc["warns"]
         warns.pop(index - 1)
 
-        await self.col.update_one(
+        await self.bot.db.collection.update_one(
             {"_id": member.id},
             {"$set": {"warns": warns}}
         )
@@ -218,7 +217,7 @@ class Moderation(commands.Cog):
 
     @commands.command(name="warnclear")
     async def warnclear(self, ctx, member: discord.Member):
-        await self.col.delete_one({"_id": member.id})
+        await self.bot.db.collection.delete_one({"_id": member.id})
 
         embed = discord.Embed(
             title="✅ Warnings Cleared",
