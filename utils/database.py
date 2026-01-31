@@ -19,6 +19,7 @@ class Database:
             db = self.client[self.db_name]
             self.collection = db[self.collection_name]
             self.tickets = db["tickets"]
+            self.auto_slowmode = db["auto_slowmode"]
             log.success(f"Database Connected → {self.db_name}")
 
     async def close(self):

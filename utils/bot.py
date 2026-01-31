@@ -1,6 +1,7 @@
 import discord
 from discord.ext import commands
 import os
+import traceback
 from dotenv import load_dotenv
 from utils.database import Database
 from utils.logger import Logger
@@ -37,9 +38,26 @@ class BoBit(commands.Bot):
     async def on_ready(self):
         self.log.success(f"Logged in as : {self.user.name}")
 
+    async def on_command_error(self, ctx: commands.Context, error: commands.CommandError):
+        if isinstance(error, commands.CommandNotFound):
+            return
+        
+        if isinstance(error, commands.CommandInvokeError):
+            error = error.original
+
+        error_msg = "".join(traceback.format_exception(type(error), error, error.__traceback__))
+        self.log.error(f"Command: {ctx.command} | User: {ctx.author} | Error:\n{error_msg}")
+        traceback.print_exception(type(error), error, error.__traceback__)
+
+    async def on_error(self, event: str, *args, **kwargs):
+        error_msg = traceback.format_exc()
+        self.log.error(f"Event: {event} | Error:\n{error_msg}")
+        traceback.print_exc()
+
     async def close(self):
         await self.db.close()
         await super().close()
 
     def runbot(self):
           self.run(self.TOKEN)
+
