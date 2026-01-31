@@ -1,14 +1,9 @@
 import discord
 from discord.ext import commands
 from utils.bot import BoBit
+from utils.consts import LOG_CHANNEL_ID, Colors
 from datetime import datetime
 import time
-
-LOG_CHANNEL_ID = 1289221438053683291
-
-MOD_COLOR = 0xED4245
-SUCCESS_COLOR = 0x57F287
-WARN_COLOR = 0xFEE75C
 
 
 class Moderation(commands.Cog):
@@ -30,7 +25,7 @@ class Moderation(commands.Cog):
 
         embed = discord.Embed(
             title="📋 Moderation Log",
-            color=MOD_COLOR,
+            color=Colors.RED,
             timestamp=datetime.utcnow()
         )
 
@@ -52,7 +47,7 @@ class Moderation(commands.Cog):
 
         embed = discord.Embed(
             title="✅ Member Kicked",
-            color=SUCCESS_COLOR
+            color=Colors.GREEN
         )
         embed.add_field(name="User", value=member.mention)
         embed.add_field(name="Moderator", value=ctx.author.mention)
@@ -73,7 +68,7 @@ class Moderation(commands.Cog):
 
         embed = discord.Embed(
             title="🔨 Member Banned",
-            color=SUCCESS_COLOR
+            color=Colors.GREEN
         )
         embed.add_field(name="User", value=f"{member} (`{member.id}`)")
         embed.add_field(name="Moderator", value=ctx.author.mention)
@@ -102,7 +97,7 @@ class Moderation(commands.Cog):
 
         embed = discord.Embed(
             title="⏳ Member Timed Out",
-            color=SUCCESS_COLOR
+            color=Colors.GREEN
         )
         embed.add_field(name="User", value=member.mention)
         embed.add_field(name="Duration", value=f"{minutes} minutes")
@@ -123,7 +118,7 @@ class Moderation(commands.Cog):
 
         embed = discord.Embed(
             title="🐌 Slowmode Updated",
-            color=SUCCESS_COLOR
+            color=Colors.GREEN
         )
         embed.add_field(name="Channel", value=ctx.channel.mention)
         embed.add_field(name="Delay", value=f"{seconds} seconds")
@@ -153,7 +148,7 @@ class Moderation(commands.Cog):
 
         embed = discord.Embed(
             title="⚠️ User Warned",
-            color=WARN_COLOR
+            color=Colors.YELLOW
         )
         embed.add_field(name="User", value=member.mention)
         embed.add_field(name="Reason", value=reason)
@@ -174,7 +169,7 @@ class Moderation(commands.Cog):
 
         embed = discord.Embed(
             title=f"⚠️ Warnings for {member}",
-            color=WARN_COLOR
+            color=Colors.YELLOW
         )
 
         if not warns:
@@ -208,7 +203,7 @@ class Moderation(commands.Cog):
 
         embed = discord.Embed(
             title="🗑️ Warning Removed",
-            color=SUCCESS_COLOR
+            color=Colors.GREEN
         )
         embed.add_field(name="User", value=member.mention)
         embed.add_field(name="Removed Index", value=index)
@@ -221,7 +216,7 @@ class Moderation(commands.Cog):
 
         embed = discord.Embed(
             title="✅ Warnings Cleared",
-            color=SUCCESS_COLOR
+            color=Colors.GREEN
         )
         embed.add_field(name="User", value=member.mention)
 

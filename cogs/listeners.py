@@ -1,6 +1,7 @@
 import discord
 from discord.ext import commands
 from utils.bot import BoBit
+from utils.consts import WELCOME_CHANNEL_ID
 from io import BytesIO
 from utils.welcomer import WeclomeBanner
 
@@ -12,7 +13,7 @@ class Listeners(commands.Cog):
     
     @commands.Cog.listener(name = "on_member_join")
     async def member_join(self, member: discord.Member):
-        welcome_channel =  member.guild.get_channel(1430077291165388821)
+        welcome_channel = member.guild.get_channel(WELCOME_CHANNEL_ID)
         
         
         """ === For Banner === """

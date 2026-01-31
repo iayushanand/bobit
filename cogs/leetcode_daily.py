@@ -1,13 +1,11 @@
 import discord
 from discord.ext import commands, tasks
+from utils.consts import LEETCODE_CHANNEL_ID, LEETCODE_DAILY_API, LEETCODE_ICON, Colors
 
 import aiohttp
 import html
 import re
 import datetime
-
-LEETCODE_DAILY_API = "https://alfa-leetcode-api.onrender.com/daily"
-LEETCODE_ICON = "https://upload.wikimedia.org/wikipedia/commons/8/8e/LeetCode_Logo_1.png"
 
 
 class LeetCode(commands.Cog):
@@ -25,7 +23,7 @@ class LeetCode(commands.Cog):
             "</code>": "`",
             "<pre>": "```",
             "</pre>": "```",
-            "<p>": "",
+            "<p>": "", 
             "</p>": "\n",
             "<ul>": "",
             "</ul>": "",
@@ -52,23 +50,30 @@ class LeetCode(commands.Cog):
 
     @tasks.loop(time=datetime.time(hour=8, minute=0))
     async def daily_post(self):
-        channel_id = 1447626752670306414
-        channel = self.bot.get_channel(channel_id)
+        channel = self.bot.get_channel(LEETCODE_CHANNEL_ID)
         if not channel:
             return
 
         data = await self.fetch_leetcode_daily()
         if not data:
             return
+        
+        tags = []
+        for i in data.get("topicTags", {}):
+            tags.append(i["name"])
 
-        description = self.leetcode_html_to_discord_md(
-            data.get("questionDescription", "")
+        description = ""
+        if tags:
+            description = "-# **Tags:**" + ", ".join(tags) + "\n\n"
+        description += self.leetcode_html_to_discord_md(
+            data.get("question", "")
         )
 
+        
         if len(description) > 4096:
             description = description[:4000] + "\n\n*(Truncated)*"
-
-        tags = ", ".join(data.get("topicTags", [])) or "N/A"
+        
+        # tags = ", ".join(data.get("topicTags", [])) or "N/A"
 
         hints = data.get("hints", [])
         if hints:
@@ -79,7 +84,7 @@ class LeetCode(commands.Cog):
         embed = discord.Embed(
             title=data["questionTitle"],
             description=description,
-            color=0xF89F1B
+            color=Colors.LEETCODE
         )
 
         embed.set_author(
@@ -88,11 +93,11 @@ class LeetCode(commands.Cog):
             url=data["questionLink"]
         )
 
-        embed.add_field(
-            name="Tags",
-            value=f"-# {tags}",
-            inline=True
-        )
+        # embed.add_field(
+        #     name="Tags",
+        #     value=f"-# {', '.join(tags) or "N/A"}",
+        #     inline=True
+        # )
 
         embed.add_field(
             name="Hints",
