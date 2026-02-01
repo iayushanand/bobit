@@ -41,53 +41,10 @@ VENT_CHANNEL_ID = 0       # Anonymous vents channel
 python main.py
 ```
 
-## Project Structure
-
-```
-BoBit/
-├── cogs/
-│   ├── antispam.py      # Auto-slowmode
-│   ├── deadchat.py      # Dead chat reviver
-│   ├── leetcode_daily.py
-│   ├── listeners.py     # Welcome messages
-│   ├── logger.py        # Event logging
-│   ├── moderation.py    # Mod commands
-│   ├── ticket.py        # Ticket command
-│   └── vent.py          # Vent command
-├── utils/
-│   ├── ui/
-│   │   ├── ticket.py    # Ticket UI components
-│   │   └── vent.py      # Vent UI components
-│   ├── bot.py           # Bot class
-│   ├── consts.py        # Constants
-│   ├── database.py      # MongoDB connection
-│   └── logger.py        # Console logger
-├── logs/                # Log files
-├── main.py              # Entry point
-└── .env                 # Environment variables
-```
-
-## Commands
-
-| Command | Description |
-|---------|-------------|
-| `.ticket` | Create ticket panel (Admin) |
-| `/ventpanel` | Create vent panel (Admin) |
-| `.kick <user> [reason]` | Kick a member |
-| `.ban <user> [reason]` | Ban a member |
-| `.timeout <user> <minutes> [reason]` | Timeout a member |
-| `.warn <user> <reason>` | Warn a member |
-| `.warns <user>` | View warnings |
-| `.warnremove <user> <index>` | Remove warning |
-| `.warnclear <user>` | Clear all warnings |
-| `.slowmode [seconds]` | Set channel slowmode |
-
 ## Tech Stack
 
 - **discord.py** - Discord API wrapper
 - **MongoDB** - Database
-- **Jishaku** - Bot debugging
-- **colorama** - Colored console output
 
 ## License
 
