@@ -5,34 +5,34 @@ import traceback
 from dotenv import load_dotenv
 from utils.database import Database
 from utils.logger import Logger
-import jishaku
+
 load_dotenv()
+
 
 class BoBit(commands.Bot):
     def __init__(self, command_prefix):
-        super().__init__(command_prefix,
-                         help_command=None,
-                         intents=discord.Intents.all(),
-                         activity=discord.Activity(type=discord.ActivityType.watching, name="over BIT Discord"),
-                         status=discord.Status.dnd
-
+        super().__init__(
+            command_prefix,
+            help_command=None,
+            intents=discord.Intents.all(),
+            activity=discord.Activity(type=discord.ActivityType.watching, name="over BIT Discord"),
+            status=discord.Status.dnd
         )
         self.TOKEN = os.getenv("TOKEN")
         self.db = Database(os.getenv("MONGOURI"))
         self.col = self.db.collection
-        self.log = Logger("BoBit") 
-    
+        self.log = Logger("BoBit")
 
     async def setup_hook(self):
         await self.db.connect()
         await self.load_extension("jishaku")
         os.environ['JISHAKU_NO_UNDERSCORE'] = 'True'
         os.environ['JISHAKU_RETAIN'] = 'True'
-        self.log.info(f"Loaded → Jishaku")
-        cog_files = os.listdir("cogs")
-        for file in cog_files:
+        self.log.info("Loaded → Jishaku")
+
+        for file in os.listdir("cogs"):
             if file.endswith(".py"):
-                ext = await self.load_extension(f"cogs.{file[:-3]}")
+                await self.load_extension(f"cogs.{file[:-3]}")
                 self.log.info(f"Loaded → {file[:-3].title()}")
 
     async def on_ready(self):
@@ -41,7 +41,6 @@ class BoBit(commands.Bot):
     async def on_command_error(self, ctx: commands.Context, error: commands.CommandError):
         if isinstance(error, commands.CommandNotFound):
             return
-        
         if isinstance(error, commands.CommandInvokeError):
             error = error.original
 
@@ -59,5 +58,4 @@ class BoBit(commands.Bot):
         await super().close()
 
     def runbot(self):
-          self.run(self.TOKEN)
-
+        self.run(self.TOKEN)

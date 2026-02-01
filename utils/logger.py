@@ -1,5 +1,3 @@
-# utils/logger.py
-
 import sys
 import os
 from datetime import datetime
@@ -12,9 +10,7 @@ class Logger:
     def __init__(self, name: str = "Bot"):
         self.name = name
         self.log_dir = "logs"
-
         os.makedirs(self.log_dir, exist_ok=True)
-
         timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
         self.log_file = os.path.join(self.log_dir, f"{timestamp}.log")
 
@@ -30,9 +26,7 @@ class Logger:
         msg_text = " ".join(str(m) for m in message)
         colored_output = f"{color}[{timestamp}] [{self.name}] [{level.upper()}]{Style.RESET_ALL} {msg_text}"
         plain_output = f"[{timestamp}] [{self.name}] [{level.upper()}] {msg_text}"
-
         print(colored_output, file=sys.stdout)
-
         self._write_to_file(plain_output)
 
     def info(self, *message):

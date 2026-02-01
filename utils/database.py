@@ -3,15 +3,16 @@ from utils.logger import Logger
 
 log = Logger("Database")
 
+
 class Database:
     def __init__(self, uri: str):
         self.uri = uri
         self.db_name = "bitbotdb"
         self.collection_name = "database"
-
         self.client: AsyncMongoClient | None = None
         self.collection = None
         self.tickets = None
+        self.auto_slowmode = None
 
     async def connect(self):
         if not self.client:
@@ -26,4 +27,3 @@ class Database:
         if self.client:
             await self.client.close()
             log.success("Database Connection closed.")
-
