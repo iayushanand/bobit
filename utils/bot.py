@@ -36,6 +36,7 @@ class BoBit(commands.Bot):
                 self.log.info(f"Loaded → {file[:-3].title()}")
 
     async def on_ready(self):
+        await self.tree.sync()
         self.log.success(f"Logged in as : {self.user.name}")
 
     async def on_command_error(self, ctx: commands.Context, error: commands.CommandError):

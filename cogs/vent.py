@@ -22,8 +22,6 @@ class Vent(commands.Cog):
             description=(
                 "Need to get something off your chest?\n\n"
                 "Click the button below to share your thoughts **completely anonymously**. "
-                "No one will know who sent it - not even the admins.\n\n"
-                "💙 *You're not alone. We're here for you.*"
             ),
             color=Colors.GREEN
         )
