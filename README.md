@@ -48,4 +48,4 @@ python main.py
 
 ## License
 
-MIT License
+GNU GENERAL PUBLIC LICENSE
