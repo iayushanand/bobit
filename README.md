@@ -2,47 +2,6 @@
 
 A feature-rich Discord bot built for the BIT Discord server with moderation, ticketing, event logging, and community engagement features.
 
-## Features
-
-### 🎫 Ticket System
-- Create support tickets with reason
-- Staff-managed ticket lifecycle
-- Automatic logging to ticket log channel
-- MongoDB persistence
-
-### 🫂 Anonymous Venting
-- `/ventpanel` - Setup anonymous vent panel
-- 100% anonymous - no identity revealed
-- Modal-based vent submission
-
-### 📋 Event Logger
-Color-coded Discord event logging:
-- Message delete/edit/bulk delete
-- Member join/leave/ban/unban
-- Role and nickname changes
-- Timeouts and voice activity
-- Channel, role, invite, thread, emoji changes
-
-### 🛡️ Moderation
-- `.kick` `.ban` `.timeout` - Member management
-- `.warn` `.warns` `.warnremove` `.warnclear` - Warning system
-- `.slowmode` - Channel slowmode control
-
-### 🐌 Anti-Spam Auto-Slowmode
-- Detects high traffic (5+ messages in 15 seconds)
-- Auto-applies 5-second slowmode
-- Removes when traffic normalizes
-- Persists through bot restarts
-
-### 💀 Dead Chat Reviver
-- Monitors general chat for inactivity
-- Sends humorous message after 10+ hours of silence
-- 29 unique messages
-
-### 📚 LeetCode Daily
-- Posts daily LeetCode challenge
-- Scheduled task with difficulty indicator
-
 ## Setup
 
 ### Prerequisites
