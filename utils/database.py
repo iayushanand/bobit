@@ -14,6 +14,7 @@ class Database:
         self.tickets = None
         self.auto_slowmode = None
         self.voice_channels = None
+        self.starboard = None
 
     async def connect(self):
         if not self.client:
@@ -23,6 +24,7 @@ class Database:
             self.tickets = db["tickets"]
             self.auto_slowmode = db["auto_slowmode"]
             self.voice_channels = db["voice_channels"]
+            self.starboard = db["starboard"]
             log.success(f"Database Connected → {self.db_name}")
 
     async def close(self):
