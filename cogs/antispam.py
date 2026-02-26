@@ -42,7 +42,7 @@ class AntiSpam(commands.Cog):
             original = channel.slowmode_delay
             self.original_slowmode[channel.id] = original
 
-            await channel.edit(slowmode_delay=5, reason="Auto-slowmode: High traffic detected")
+            await channel.edit(slowmode_delay=3, reason="Auto-slowmode: High traffic detected")
             self.auto_slowmode_channels.add(channel.id)
 
             await self.bot.db.auto_slowmode.insert_one({
