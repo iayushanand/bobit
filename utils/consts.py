@@ -16,7 +16,9 @@ STARBOARD_CHANNEL_ID = 1476505969516220498
 STARBOARD_THRESHOLD = 4
 
 LEETCODE_DAILY_API = "https://alfa-leetcode-api.onrender.com/daily"
+LEETCODE_UPCOMING_API = "https://alfa-leetcode-api.onrender.com/contests/upcoming"
 LEETCODE_ICON = "https://upload.wikimedia.org/wikipedia/commons/8/8e/LeetCode_Logo_1.png"
+LEETCODE_ROLE_ID = 1447609381737730120
 
 
 class Colors:

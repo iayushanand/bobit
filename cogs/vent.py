@@ -22,6 +22,7 @@ class Vent(commands.Cog):
             description=(
                 "Need to get something off your chest?\n\n"
                 "Click the button below to share your thoughts **completely anonymously**. "
+                "You can also attach an image by pasting a link!"
             ),
             color=Colors.GREEN
         )
