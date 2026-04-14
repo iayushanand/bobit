@@ -1,5 +1,5 @@
 import discord
-from discord.ext import commands
+from discord.ext import commands, tasks
 from utils.bot import BoBit
 from utils.consts import Colors
 from collections import defaultdict
@@ -14,10 +14,60 @@ class AntiSpam(commands.Cog):
         self.original_slowmode: dict[int, int] = {}
 
     async def cog_load(self):
-        async for doc in self.bot.db.auto_slowmode.find():
-            channel_id = doc["channel_id"]
-            self.auto_slowmode_channels.add(channel_id)
-            self.original_slowmode[channel_id] = doc["original_slowmode"]
+        self.bot.loop.create_task(self.initialize_db())
+        self.slowmode_revert_task.start()
+
+    async def initialize_db(self):
+        try:
+            async for doc in self.bot.db.auto_slowmode.find():
+                channel_id = doc["channel_id"]
+                self.auto_slowmode_channels.add(channel_id)
+                self.original_slowmode[channel_id] = doc["original_slowmode"]
+        except Exception as e:
+            self.bot.log.error(f"Failed to initialize auto_slowmode from DB: {e}")
+
+    async def cog_unload(self):
+        self.slowmode_revert_task.cancel()
+
+    @tasks.loop(seconds=15)
+    async def slowmode_revert_task(self):
+        current_time = time.time()
+        for channel_id in list(self.auto_slowmode_channels):
+            # clean up tracker
+            if channel_id in self.message_tracker:
+                self.message_tracker[channel_id] = [
+                    t for t in self.message_tracker[channel_id]
+                    if current_time - t <= 15
+                ]
+                count = len(self.message_tracker[channel_id])
+            else:
+                count = 0
+
+            # If activity drops to 0 in the last 15 seconds
+            if count == 0:
+                channel = self.bot.get_channel(channel_id)
+                original = self.original_slowmode.get(channel_id, 0)
+                
+                if isinstance(channel, discord.TextChannel):
+                    try:
+                        await channel.edit(slowmode_delay=original, reason="Auto-slowmode: Traffic normalized")
+                        embed = discord.Embed(
+                            title="🐌 Auto-Slowmode Removed",
+                            description="Traffic has normalized! The slowmode has been removed.",
+                            color=Colors.GREEN
+                        )
+                        await channel.send(embed=embed)
+                        self.bot.log.info(f"Auto-slowmode disabled in #{channel.name}")
+                    except discord.Forbidden:
+                        pass
+                
+                self.auto_slowmode_channels.discard(channel_id)
+                self.original_slowmode.pop(channel_id, None)
+                await self.bot.db.auto_slowmode.delete_one({"channel_id": channel_id})
+
+    @slowmode_revert_task.before_loop
+    async def before_slowmode_revert_task(self):
+        await self.bot.wait_until_ready()
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
@@ -53,7 +103,7 @@ class AntiSpam(commands.Cog):
 
             embed = discord.Embed(
                 title="🐌 Auto-Slowmode Activated",
-                description="High traffic detected! A **5 second** slowmode has been applied.",
+                description="High traffic detected! A **3 second** slowmode has been applied.",
                 color=Colors.ORANGE
             )
             await channel.send(embed=embed)
