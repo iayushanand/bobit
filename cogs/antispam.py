@@ -88,7 +88,7 @@ class AntiSpam(commands.Cog):
             if current_time - t <= 15
         ]
 
-        if len(self.message_tracker[channel.id]) > 5 and channel.id not in self.auto_slowmode_channels:
+        if len(self.message_tracker[channel.id]) > 10 and channel.id not in self.auto_slowmode_channels:
             original = channel.slowmode_delay
             self.original_slowmode[channel.id] = original
 
