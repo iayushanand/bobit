@@ -47,7 +47,7 @@ class Vent(commands.Cog):
         )
         await ctx.reply(embed = embed_1)
         try:
-            embed_2 = embed_1 = discord.Embed(
+            embed_2 = discord.Embed(
                 description = "🔨 You have been banned from venting.",
                 color = Colors.RED
             )
