@@ -28,7 +28,7 @@ class Vent(commands.Cog):
         )
         embed.set_footer(text="All messages are 100% anonymous")
 
-        await interaction.channel.send(embed=embed, view=VentButton()) 
+        await interaction.channel.send(embed=embed, view=VentButton())
         await interaction.response.send_message("✅ Vent panel created!", ephemeral=True)
 
     @commands.command(name="ventban", description="Ban someone from venting")
