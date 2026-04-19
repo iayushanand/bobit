@@ -35,6 +35,15 @@ class VentModal(ui.Modal):
                 ephemeral=True
             )
             return
+        
+        data = await interaction.client.db.ventban.find_one({"user_id": interaction.user.id})
+
+        if data:
+            await interaction.response.send_message(
+                "❌ You are banned from venting.",
+                ephemeral=True
+            )
+            return
 
         embed = discord.Embed(
             title="💭 Anonymous Vent",
@@ -44,8 +53,9 @@ class VentModal(ui.Modal):
 
         if image_url:
             embed.set_image(url=image_url)
-
-        await vent_channel.send(embed=embed, view=VentButton())
+        
+        msg = await vent_channel.send(embed=embed, view=VentButton())
+        await interaction.client.db.vent.insert_one({"user_id": interaction.user.id, "message_id": msg.id, "content": vent_content, "image_url": image_url})
         await interaction.response.send_message(
             "✅ Your vent has been posted anonymously 💙.",
             ephemeral=True
