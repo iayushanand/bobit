@@ -2,7 +2,7 @@ import discord
 from discord.ext import commands, tasks
 from utils.consts import LEETCODE_CHANNEL_ID, LEETCODE_DAILY_API, LEETCODE_UPCOMING_API, LEETCODE_ROLE_ID, LEETCODE_ICON, Colors
 
-import aiohttp
+from aiohttp import ClientTimeout
 import html
 import re
 import datetime
@@ -45,18 +45,16 @@ class LeetCode(commands.Cog):
         return text.strip()
 
     async def fetch_leetcode_daily(self):
-        async with aiohttp.ClientSession() as session:
-            async with session.get(LEETCODE_DAILY_API, timeout=10) as resp:
-                if resp.status != 200:
-                    return None
-                return await resp.json()
+        async with self.bot.session.get(LEETCODE_DAILY_API, timeout=ClientTimeout(total=10)) as resp:
+            if resp.status != 200:
+                return None
+            return await resp.json()
 
     async def fetch_upcoming_contests(self):
-        async with aiohttp.ClientSession() as session:
-            async with session.get(LEETCODE_UPCOMING_API, timeout=10) as resp:
-                if resp.status != 200:
-                    return None
-                return await resp.json()
+        async with self.bot.session.get(LEETCODE_UPCOMING_API, timeout=ClientTimeout(total=10)) as resp:
+            if resp.status != 200:
+                return None
+            return await resp.json()
 
     @tasks.loop(hours=1)
     async def check_contests_loop(self):
