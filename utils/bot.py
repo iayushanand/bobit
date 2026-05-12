@@ -1,5 +1,6 @@
 import discord
 from discord.ext import commands
+import aiohttp
 import os
 import traceback
 from dotenv import load_dotenv
@@ -22,8 +23,10 @@ class BoBit(commands.Bot):
         self.db = Database(os.getenv("MONGOURI"))
         self.col = self.db.collection
         self.log = Logger("BoBit")
+        self.session: aiohttp.ClientSession | None = None
 
     async def setup_hook(self):
+        self.session = aiohttp.ClientSession()
         await self.db.connect()
         await self.load_extension("jishaku")
         os.environ['JISHAKU_NO_UNDERSCORE'] = 'True'
@@ -55,8 +58,12 @@ class BoBit(commands.Bot):
         traceback.print_exc()
 
     async def close(self):
+        if self.session:
+            await self.session.close()
+            self.log.warning("Client Session closed.")
         await self.db.close()
         await super().close()
+        self.log.success("Bot shutdown.")
 
     def runbot(self):
         self.run(self.TOKEN)

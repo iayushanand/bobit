@@ -34,4 +34,4 @@ class Database:
     async def close(self):
         if self.client:
             await self.client.close()
-            log.success("Database Connection closed.")
+            log.warning("Database Connection closed.")

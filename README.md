@@ -49,3 +49,5 @@ python main.py
 ## License
 
 GNU GENERAL PUBLIC LICENSE
+
+__NOTE__: Spotify and Lyrics commands is taken from [`the-coding-realm/coding-bot-v6`](https://github.com/the-coding-realm/coding-bot-v6) under [`Apache License 2.0`](https://github.com/iayushanand/coding-bot-v6/blob/master/LICENSE), the code is written and modified by [**Ayu**](https://github.com/iayushanand)
