@@ -18,7 +18,7 @@ class Listeners(commands.Cog):
         if welcome_channel:
             avatar_bytes = await member.display_avatar.read()
             avatar = BytesIO(avatar_bytes)
-            file = self.banner.make_banner(member.name, avatar)
+            file = self.banner.make_banner(member.name, avatar, member_count=member.guild.member_count)
             await welcome_channel.send(
                 content=f"-# Welcome to server {member.mention}",
                 file=file
