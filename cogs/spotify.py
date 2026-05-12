@@ -62,7 +62,7 @@ class SpotifyShowcase(commands.Cog):
             if lyr[1] == 1:
                 lyr = "\n".join(find_surrounding_lyrics(lyr[0], int(duration)))
             else:
-                lyr = "\n".join(lyr.splitlines()[0:5])
+                lyr = "\n".join(lyr[0].splitlines()[0:5])
 
             embed = discord.Embed(description = lyr, title = f"{song_title} - {song_artist}", color = spotify_activity.color)
             embed.set_author(name = ctx.author, icon_url = ctx.author.avatar.url)

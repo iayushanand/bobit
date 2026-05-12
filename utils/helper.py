@@ -181,10 +181,11 @@ def get_lyrics(name: str, artist: str) -> str:
     # Check if lyrics are available
     if len(id) != 0:
         lyrics = api.get_lyrics_by_id(id[0].id)
-        s_lyrics = lyrics.synced_lyrics, 1
-        if not s_lyrics:
-            s_lyrics = lyrics.plain_lyrics, 0
-        return s_lyrics
+        if lyrics.synced_lyrics:
+            return (lyrics.synced_lyrics, 1)
+        elif lyrics.plain_lyrics:
+            return (lyrics.plain_lyrics, 0)
+        return None
     else:
         return None
 
