@@ -169,18 +169,15 @@ class Spotify:
     
 
 
+_lrclib_api = LrcLibAPI(
+    user_agent="Mozilla/5.0 (X11; Linux x86_64; rv:125.0) Gecko/20100101 Firefox/125.0"
+)
+
 def get_lyrics(name: str, artist: str) -> str:
-    user_agent = (
-        "Mozilla/5.0 (X11; Linux x86_64; rv:125.0) Gecko/20100101 Firefox/125.0"
-    )
+    results = _lrclib_api.search_lyrics(track_name=name, artist_name=artist)
 
-    # Prepare the API
-    api = LrcLibAPI(user_agent=user_agent)
-    id = api.search_lyrics(track_name=name, artist_name=artist)
-
-    # Check if lyrics are available
-    if len(id) != 0:
-        lyrics = api.get_lyrics_by_id(id[0].id)
+    if len(results) != 0:
+        lyrics = _lrclib_api.get_lyrics_by_id(results[0].id)
         if lyrics.synced_lyrics:
             return (lyrics.synced_lyrics, 1)
         elif lyrics.plain_lyrics:
