@@ -1,3 +1,4 @@
+from aiohttp import client_exceptions
 import discord
 from discord.ext import commands
 from utils.bot import BoBit
@@ -42,6 +43,7 @@ class Moderation(commands.Cog):
         await log_channel.send(embed=embed)
 
     @commands.command(name="kick")
+    @commands.has_permissions(kick_members=True)
     async def kick(self, ctx, member: discord.Member, *, reason: str = None):
         await member.kick(reason=reason)
 
@@ -63,6 +65,7 @@ class Moderation(commands.Cog):
         )
 
     @commands.command(name="ban")
+    @commands.has_permissions(ban_members=True)
     async def ban(self, ctx, member: discord.Member, *, reason: str = None):
         await member.ban(reason=reason)
 
@@ -84,6 +87,7 @@ class Moderation(commands.Cog):
         )
 
     @commands.command(name="timeout", aliases=["silence"])
+    @commands.has_permissions(kick_members=True)
     async def timeout(
         self,
         ctx,
@@ -113,6 +117,7 @@ class Moderation(commands.Cog):
         )
 
     @commands.command(name="slowmode",aliases=["sm"])
+    @commands.has_permissions(manage_channels=True)
     async def slowmode(self, ctx, seconds: int = 0):
         await ctx.channel.edit(slowmode_delay=seconds)
 
@@ -133,6 +138,7 @@ class Moderation(commands.Cog):
         )
 
     @commands.command(name="warn")
+    @commands.has_permissions(kick_members=True)
     async def warn(self, ctx, member: discord.Member, *, reason: str):
         warn_data = {
             "reason": reason,
@@ -163,6 +169,7 @@ class Moderation(commands.Cog):
         )
 
     @commands.command(name="warns")
+    @commands.has_permissions(kick_members=True)
     async def warns(self, ctx, member: discord.Member):
         doc = await self.bot.db.collection.find_one({"_id": member.id})
         warns = doc["warns"] if doc else []
@@ -188,6 +195,7 @@ class Moderation(commands.Cog):
         await ctx.send(embed=embed)
 
     @commands.command(name="warnremove")
+    @commands.has_permissions(kick_members=True)
     async def warnremove(self, ctx, member: discord.Member, index: int):
         doc = await self.bot.db.collection.find_one({"_id": member.id})
         if not doc:
@@ -211,6 +219,7 @@ class Moderation(commands.Cog):
         await ctx.send(embed=embed)
 
     @commands.command(name="warnclear")
+    @commands.has_permissions(kick_members=True)
     async def warnclear(self, ctx, member: discord.Member):
         await self.bot.db.collection.delete_one({"_id": member.id})
 
