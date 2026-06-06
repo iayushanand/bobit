@@ -19,6 +19,7 @@ class BoBit(commands.Bot):
             activity=discord.Activity(type=discord.ActivityType.watching, name="over BIT Discord"),
             status=discord.Status.dnd
         )
+        self.owner_ids = {782909992864186368, 748053138354864229}
         self.TOKEN = os.getenv("TOKEN")
         self.db = Database(os.getenv("MONGOURI"))
         self.col = self.db.collection
