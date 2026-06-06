@@ -25,6 +25,11 @@ class BoBit(commands.Bot):
         self.col = self.db.collection
         self.log = Logger("BoBit")
         self.session: aiohttp.ClientSession | None = None
+        self.allowed_mentions = discord.AllowedMentions(
+            users=True,
+            roles=True,
+            everyone=False
+        )
 
     async def setup_hook(self):
         self.session = aiohttp.ClientSession()
