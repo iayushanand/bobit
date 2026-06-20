@@ -86,7 +86,7 @@ class Moderation(commands.Cog):
             channel=ctx.channel
         )
 
-    @commands.command(name="timeout", aliases=["silence"])
+    @commands.command(name="timeout", aliases=["silence", "mute"])
     @commands.has_permissions(kick_members=True)
     async def timeout(
         self,
