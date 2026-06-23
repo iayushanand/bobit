@@ -17,6 +17,7 @@ class Database:
         self.starboard = None
         self.vent = None
         self.ventban = None
+        self.afk = None
 
     async def connect(self):
         if not self.client:
@@ -29,6 +30,7 @@ class Database:
             self.starboard = db["starboard"]
             self.vent = db["vent"]
             self.ventban = db["ventban"]
+            self.afk = db["afk"]
             log.success(f"Database Connected → {self.db_name}")
 
     async def close(self):

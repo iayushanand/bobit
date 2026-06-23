@@ -3,7 +3,7 @@ import discord
 from discord.ext import commands
 from utils.bot import BoBit
 from utils.consts import LOG_CHANNEL_ID, Colors
-from datetime import datetime
+from datetime import datetime, timedelta
 import time
 
 
@@ -96,7 +96,7 @@ class Moderation(commands.Cog):
         *,
         reason: str = None
     ):
-        until = discord.utils.utcnow() + discord.timedelta(minutes=minutes)
+        until = discord.utils.utcnow() + timedelta(minutes=minutes)
         await member.edit(timeout=until, reason=reason)
 
         embed = discord.Embed(
