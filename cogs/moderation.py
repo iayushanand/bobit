@@ -3,6 +3,7 @@ import discord
 from discord.ext import commands
 from utils.bot import BoBit
 from utils.consts import LOG_CHANNEL_ID, Colors
+from utils.helper import parse_duration
 from datetime import datetime, timedelta
 import time
 
@@ -92,24 +93,63 @@ class Moderation(commands.Cog):
         self,
         ctx,
         member: discord.Member,
-        minutes: int,
+        time_str: str,
         *,
         reason: str = None
     ):
-        until = discord.utils.utcnow() + timedelta(minutes=minutes)
-        await member.edit(timeout=until, reason=reason)
+        seconds = parse_duration(time_str)
+        if seconds <= 0:
+            embed = discord.Embed(
+                description="❌ Invalid time format! Use `1d`, `3h`, `40m`, etc.",
+                color=Colors.RED
+            )
+            await ctx.send(embed=embed)
+            return
+
+        until = discord.utils.utcnow() + timedelta(seconds=seconds)
+        await member.edit(timed_out_until=until, reason=reason)
 
         embed = discord.Embed(
             title="⏳ Member Timed Out",
             color=Colors.GREEN
         )
         embed.add_field(name="User", value=member.mention)
-        embed.add_field(name="Duration", value=f"{minutes} minutes")
+        embed.add_field(name="Duration", value=time_str)
         embed.add_field(name="Reason", value=reason or "None")
 
         await ctx.send(embed=embed)
         await self.log_action(
-            action=f"Timeout ({minutes}m)",
+            action=f"Timeout ({time_str})",
+            moderator=ctx.author,
+            target=member,
+            reason=reason,
+            channel=ctx.channel
+        )
+
+    @commands.command(name="unmute", aliases=["untimeout", "unsilence"])
+    @commands.has_permissions(kick_members=True)
+    async def unmute(self, ctx, member: discord.Member, *, reason: str = None):
+        if not member.timed_out_until:
+            embed = discord.Embed(
+                description=f"❌ {member.mention} is not timed out!",
+                color=Colors.RED
+            )
+            await ctx.send(embed=embed)
+            return
+
+        await member.edit(timed_out_until=None, reason=reason)
+
+        embed = discord.Embed(
+            title="✅ Member Unmuted",
+            color=Colors.GREEN
+        )
+        embed.add_field(name="User", value=member.mention)
+        embed.add_field(name="Moderator", value=ctx.author.mention)
+        embed.add_field(name="Reason", value=reason or "None")
+
+        await ctx.send(embed=embed)
+        await self.log_action(
+            action="Unmute",
             moderator=ctx.author,
             target=member,
             reason=reason,

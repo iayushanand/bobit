@@ -13,90 +13,48 @@ class Spotify:
     __slots__ = ("member", "bot", "embed", "regex", "headers", "counter")
 
     def __init__(self, *, bot, member) -> None:
-        """
-        Class that represents a Spotify object, used for creating listening embeds
-        Parameters:
-        ----------------
-        bot : commands.Bot
-            represents the Bot object
-        member : discord.Member
-            represents the Member object whose spotify listening is to be handled
-        """
         self.member: discord.Member | discord.User = member
         self.bot: commands.Bot = bot
         self.counter = 0
 
     @staticmethod
     def pil_process(pic: BytesIO, name, artists, time, time_at, track) -> discord.File:
-        """
-        Makes an image with spotify album cover with Pillow
-
-        Parameters:
-        ----------------
-        pic : BytesIO
-            BytesIO object of the album cover
-        name : str
-            Name of the song
-        artists : list
-            Name(s) of the Artists
-        time : int
-            Total duration of song in xx:xx format
-        time_at : int
-            Total duration into the song in xx:xx format
-        track : int
-            Offset for covering the played bar portion
-        Returns
-        ----------------
-        discord.File
-            contains the spotify image
-        """
-
-        # Resize imput image to 300x300
-        # TODO: Remove hardcoded domentions frpm cbvx
         d = Image.open(pic).resize((300, 300))
-        # Save to a buffer as PNG
         buffer = BytesIO()
         d.save(buffer, "png")
         buffer.seek(0)
-        # Pass raw bytes to cbvx.iml (needs to be png data)
         csp = iml.Spotify(buffer.getvalue())
-        # Spotify class has 3 config methods - rate (logarithmic rate of interpolation),
-        #  contrast, and shift (pallet shift)
-        csp.rate(0.55)  # Higner = less sharp interpolation
-        csp.contrast(20.0)  # default, Higner = more contrast
-        csp.shift(0)  # default
-        # _ is the bg color (non constrasted), we only care about foreground color
+        csp.rate(0.55)
+        csp.contrast(20.0)
+        csp.shift(0)
         _, fore = csp.pallet()
         fore = (fore.r, fore.g, fore.b)
-        # We get the base to write text on
         result = csp.get_base()
         base = Image.frombytes("RGB", (600, 300), result)
 
-        font0 = ImageFont.truetype("assets/fonts/spotify.ttf", 35)  # For title
-        font2 = ImageFont.truetype("assets/fonts/spotify.ttf", 18)  # Time stamps
+        font0 = ImageFont.truetype("assets/fonts/spotify.ttf", 35)
+        font2 = ImageFont.truetype("assets/fonts/spotify.ttf", 18)
 
-        draw = ImageDraw.Draw(
-            base,
-        )
+        draw = ImageDraw.Draw(base)
         draw.rounded_rectangle(
             ((50, 230), (550, 230)),
             radius=1,
             fill=tuple(map(lambda c: int(c * 0.5), fore)),
-        )  # play bar
+        )
         draw.rounded_rectangle(
             ((50, 230 - 1), (int(50 + track * 500), 230 + 1)),
             radius=1,
             fill=fore,
-        )  # pogress
+        )
         draw.ellipse(
             (int(50 + track * 500) - 5, 230 - 5, int(50 + track * 500) + 5, 230 + 5),
             fill=fore,
             outline=fore,
-        )  # Playhead
-        draw.text((50, 245), time_at, fore, font=font2)  # Current time
-        draw.text((500, 245), time, fore, font=font2)  # Total duration
-        draw.text((50, 50), name, fore, font=font0)  # Track name
-        draw.text((50, 100), artists, fore, font=font2)  # Artists
+        )
+        draw.text((50, 245), time_at, fore, font=font2)
+        draw.text((500, 245), time, fore, font=font2)
+        draw.text((50, 50), name, fore, font=font0)
+        draw.text((50, 100), artists, fore, font=font2)
 
         output = BytesIO()
         base.save(output, "png")
@@ -104,20 +62,6 @@ class Spotify:
         return discord.File(fp=output, filename="spotify.png")
 
     async def get_from_local(self, bot, act: discord.Spotify) -> discord.File:
-        """
-        Makes an image with spotify album cover with Pillow
-
-        Parameters:
-        ----------------
-        bot : commands.Bot
-            represents our Bot object
-        act : discord.Spotify
-            activity object to get information from
-        Returns
-        ----------------
-        discord.File
-            contains the spotify image
-        """
         s = tuple(f"{string.ascii_letters}{string.digits}{string.punctuation} ")
         artists = ", ".join(act.artists)
         artists = "".join([x for x in artists if x in s])
@@ -140,14 +84,6 @@ class Spotify:
         return self.pil_process(pic, name, artists, time, time_at, track)
 
     async def get_embed(self) -> Tuple[discord.Embed, discord.File, discord.ui.View]:
-        """
-        Creates the Embed object
-
-        Returns
-        ----------------
-        Tuple[discord.Embed, discord.File]
-            the embed object and the file with spotify image
-        """
         activity = discord.utils.find(
             lambda activity: isinstance(activity, discord.Spotify),
             self.member.activities,
@@ -166,8 +102,6 @@ class Spotify:
             )
         )
         return (image, view)
-    
-
 
 _lrclib_api = LrcLibAPI(
     user_agent="Mozilla/5.0 (X11; Linux x86_64; rv:125.0) Gecko/20100101 Firefox/125.0"
@@ -185,7 +119,6 @@ def get_lyrics(name: str, artist: str) -> str:
         return None
     else:
         return None
-
 
 def parse_timestamp_to_seconds(timestamp):
     minutes, seconds = map(float, timestamp.split(':'))
@@ -210,3 +143,19 @@ def find_surrounding_lyrics(lyrics, target_seconds):
     surrounding_lyrics = [parsed_lyrics[i][1] for i in range(start_index, end_index)]
 
     return surrounding_lyrics
+
+def parse_duration(duration_str: str) -> int:
+    time_dict = {
+        'd': 86400,
+        'h': 3600,
+        'm': 60,
+        's': 1
+    }
+    
+    total_seconds = 0
+    matches = re.findall(r"(\d+)\s*([dhms])", duration_str.lower())
+    
+    for amount, unit in matches:
+        total_seconds += int(amount) * time_dict[unit]
+        
+    return total_seconds
