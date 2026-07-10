@@ -13,7 +13,7 @@ A feature-rich Discord bot built for the BIT Discord server with moderation, tic
 
 1. Clone the repository
 ```bash
-git clone https://github.com/yourusername/BoBit.git
+git clone https://github.com/iayushanand/BoBit.git
 cd BoBit
 ```
 
