@@ -50,4 +50,6 @@ python main.py
 
 GNU GENERAL PUBLIC LICENSE
 
-__NOTE__: Spotify and Lyrics commands is taken from [`the-coding-realm/coding-bot-v6`](https://github.com/the-coding-realm/coding-bot-v6) under [`Apache License 2.0`](https://github.com/iayushanand/coding-bot-v6/blob/master/LICENSE), the code is written and modified by [**Ayu**](https://github.com/iayushanand)
+__NOTE__:
+- Spotify and Lyrics commands is taken from [`the-coding-realm/coding-bot-v6`](https://github.com/the-coding-realm/coding-bot-v6) under [`Apache License 2.0`](https://github.com/iayushanand/coding-bot-v6/blob/master/LICENSE), the code is written and modified by [**Ayu**](https://github.com/iayushanand)
+- Faculty command data is stored in [bit.json](assets/data/bit.json) and it is generated from using the scraper - [`iayushanand/BIT Scraper`](https://github.com/iayushanand/BIT-Scraper) under [`General Public License v3`](https://github.com/iayushanand/BIT-Scraper/blob/main/LICENSE), the code is written and modified by [**Ayu**](https://github.com/iayushanand)
