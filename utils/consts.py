@@ -61,3 +61,6 @@ DEAD_CHAT_MESSAGES = [
     "Checking the chat's 'Do Not Resuscitate' order...",
     "Since nobody is talking, I'm assuming I'm now the acting CEO of this server. My first decree: Someone say something funny or you're all fired."
 ]
+
+
+NASA_POD = "https://api.nasa.gov/planetary/apod"
