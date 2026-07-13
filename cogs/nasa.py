@@ -29,7 +29,7 @@ class Nasa(commands.Cog):
             title = data["title"],
             description = data["explanation"],
             color = discord.Color.dark_blue(),
-            url=data["hdurl"]
+            url=data["url"]
         ).set_image(
             url = data["url"]
         ).set_footer(
@@ -127,7 +127,7 @@ class Nasa(commands.Cog):
             title = data["title"],
             description = data["explanation"],
             color = discord.Color.dark_blue(),
-            url=data["hdurl"]
+            url=data["url"]
         ).set_image(
             url = data["url"]
         ).set_footer(
