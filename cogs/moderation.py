@@ -271,6 +271,34 @@ class Moderation(commands.Cog):
 
         await ctx.send(embed=embed)
 
+    @commands.command(name="purge", aliases=["clear"])
+    @commands.has_permissions(manage_messages=True)
+    async def purge(self, ctx, amount: int):
+        deleted = await ctx.channel.purge(limit=amount + 1)
+
+        embed = discord.Embed(
+            title="🧹 Messages Purged",
+            color=Colors.GREEN
+        )
+        embed.add_field(name="Channel", value=ctx.channel.mention)
+        embed.add_field(name="Amount", value=str(len(deleted) - 1))
+        embed.add_field(name="Moderator", value=ctx.author.mention)
+
+        msg = await ctx.send(embed=embed)
+        
+        try:
+            await msg.delete(delay=5)
+        except discord.NotFound:
+            pass
+
+        await self.log_action(
+            action="Purge",
+            moderator=ctx.author,
+            target=None,
+            reason=f"Purged {len(deleted) - 1} messages",
+            channel=ctx.channel
+        )
+
 
 async def setup(bot: BoBit):
     await bot.add_cog(Moderation(bot))
