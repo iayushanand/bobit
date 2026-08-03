@@ -17,7 +17,7 @@ class ShitMeme(commands.Cog):
         avatar = BytesIO(avatar_bytes)
 
         av = Image.open(avatar)
-        av = av.resize((75,75)).rotate(45, expand=True).convert("RGBA")
+        av = av.resize((75,75)).convert("RGBA").rotate(45, expand=True)
         template.paste(av, (214,624), av)
 
         with BytesIO() as image_binary:
