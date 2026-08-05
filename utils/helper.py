@@ -1,10 +1,16 @@
+
 import discord
+import math
 import string
-import datetime as dt
+import textwrap
 import re
+
+import datetime as dt
+import numpy as np
+
 from discord.ext import commands
 from io import BytesIO
-from PIL import Image, ImageFont, ImageDraw
+from PIL import Image, ImageDraw, ImageFont, ImageOps, ImageEnhance
 from cbvx import iml
 from typing import Tuple
 from lrclib import LrcLibAPI
@@ -159,3 +165,139 @@ def parse_duration(duration_str: str) -> int:
         total_seconds += int(amount) * time_dict[unit]
         
     return total_seconds
+
+
+
+def create_quote_buffer(avatar, quote, display_name, username):
+    WIDTH = 1600
+    HEIGHT = 900
+
+    IMAGE_WIDTH = int(WIDTH * 0.48)
+
+    template = Image.new("RGBA", (WIDTH, HEIGHT), "black")
+
+    FONT = "assets/fonts/InterBlack.ttf"
+
+    quote_font = ImageFont.truetype(FONT, 64)
+    info_font = ImageFont.truetype(FONT, 34)
+
+
+    avatar = (
+        avatar.convert("L")
+            .convert("RGBA")
+    )
+
+    avatar = ImageEnhance.Contrast(avatar).enhance(0.9)
+    avatar = ImageEnhance.Brightness(avatar).enhance(0.8)
+
+    avatar = ImageOps.fit(
+        avatar,
+        (IMAGE_WIDTH, HEIGHT),
+        method=Image.Resampling.LANCZOS,
+        centering=(0.0, 0.5),
+    )
+
+    overlay = Image.new(
+        "RGBA",
+        avatar.size,
+        (0, 0, 0, 70),
+    )
+
+    avatar = Image.alpha_composite(avatar, overlay)
+
+
+    mask = Image.new("L", (IMAGE_WIDTH, HEIGHT))
+    pixels = mask.load()
+
+    fade_start = IMAGE_WIDTH * 0.15
+    fade_end = IMAGE_WIDTH * 0.98
+    curve_strength = IMAGE_WIDTH * 0.08
+
+    for y in range(HEIGHT):
+        arc = math.sin(math.pi * y / (HEIGHT - 1))
+        offset = curve_strength * arc
+
+        start = fade_start + offset
+        end = fade_end + offset
+
+        for x in range(IMAGE_WIDTH):
+            if x <= start:
+                alpha = 255
+            elif x >= end:
+                alpha = 0
+            else:
+                t = (x - start) / (end - start)
+                t = t ** 1.8
+                alpha = int(255 * (1 - t))
+
+            pixels[x, y] = alpha
+
+    avatar.putalpha(mask)
+    template.alpha_composite(avatar)
+
+    draw = ImageDraw.Draw(template)
+
+
+    wrapped = textwrap.fill(quote, width=28)
+
+    bbox = draw.multiline_textbbox(
+        (0, 0),
+        wrapped,
+        font=quote_font,
+        spacing=10,
+        align="center",
+    )
+
+    qw = bbox[2] - bbox[0]
+    qh = bbox[3] - bbox[1]
+
+    center_x = int(WIDTH * 0.73)
+    quote_y = HEIGHT // 2 - qh // 2 - 30
+
+    draw.multiline_text(
+        (center_x - qw // 2, quote_y),
+        wrapped,
+        font=quote_font,
+        fill="white",
+        align="center",
+        spacing=10,
+    )
+
+
+    author = f"- {display_name}"
+
+    bbox = draw.textbbox((0, 0), author, font=info_font)
+    aw = bbox[2] - bbox[0]
+    ah = bbox[3] - bbox[1]
+
+    author_y = quote_y + qh + 26
+
+    draw.text(
+        (center_x - aw // 2, author_y),
+        author,
+        font=info_font,
+        fill="white",
+    )
+
+
+    user = f"@{username}"
+
+    bbox = draw.textbbox((0, 0), user, font=info_font)
+    uw = bbox[2] - bbox[0]
+
+    draw.text(
+        (center_x - uw // 2, author_y + ah + 8),
+        user,
+        font=info_font,
+        fill=(140, 140, 140),
+    )
+
+
+    with BytesIO() as image_binary:
+        template.save(image_binary, "PNG")
+        image_binary.seek(0)
+
+        return discord.File(
+            fp=image_binary,
+            filename="quote.png",
+        )
