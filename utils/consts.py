@@ -64,3 +64,5 @@ DEAD_CHAT_MESSAGES = [
 
 
 NASA_POD = "https://api.nasa.gov/planetary/apod"
+
+SLOT_EMOJI = "<a:slots:1534443340546838568>"
