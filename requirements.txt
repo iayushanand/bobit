@@ -6,3 +6,4 @@ jishaku==2.6.3
 colorama==0.4.6
 lrclibapi==0.3.1
 cbvx==0.1.0
+numpy==2.5.1
