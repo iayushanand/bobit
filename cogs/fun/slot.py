@@ -11,27 +11,19 @@ class SlotMachine(commands.Cog):
         super().__init__()
         self.bot = bot
 
-    @commands.command(name = "slot")
+    @commands.command(name="slot")
     async def slot(self, ctx: commands.Context, amount: int = None):
 
-
-        # please follow PEP8 and set amount inside the function and not in the function arguments for a cleaner more understandable code ~ ayu
-        if not amount:
+        # pls follow PEP8 and set amount inside the function instead of
+        # the function arguments for cleaner, more understandable code ~ ayu
+        if amount is None:
             amount = 10
 
-        embed = discord.Embed(
-            description=f"# {SLOT_EMOJI} {SLOT_EMOJI} {SLOT_EMOJI}\n\n-# Slotting - ₹{amount}",
-            color = discord.Color.red()
-        )
-
-        msg = await ctx.reply(embed = embed)
-
-        await asyncio.sleep(3)
-
         emojis = ["💎", "⭐", "🔔", "🍇", "🍑", "🍒"]
-        weights = [4, 7, 10, 20, 28, 45] # feel free to play with weights to find the sweet spot of winning and losing 
+        # feel free to tweak these weights.
+        weights = [4, 7, 10, 20, 28, 45]
         # currently - 
-        # The total weight is 114... so the probability of each symbol on a single reel is:
+        # the total weight is 114... so the probability of each symbol on a single reel is:
 
         # Emoji	Weight	Chance
         # 💎	4	3.51%
@@ -50,7 +42,6 @@ class SlotMachine(commands.Cog):
         # 🍑🍑🍑	1.4817% (≈ 1 in 67) [six seven 👅]
         # 🍒🍒🍒	6.1480% (≈ 1 in 16)
 
-        _slot = random.choices(emojis, weights, k=3)
         payouts = {
             "🍒": 2,
             "🍑": 3,
@@ -60,18 +51,70 @@ class SlotMachine(commands.Cog):
             "💎": 100,
         }
 
-        final_embed = discord.Embed(
-            description = f"# {' '.join(_slot)}\n\n"
+        # roll the result before the animation
+        slot = random.choices(emojis, weights=weights, k=3)
+
+        embed = discord.Embed(
+            description=(
+                f"# {SLOT_EMOJI} {SLOT_EMOJI} {SLOT_EMOJI}\n\n"
+                f"-# Betting **₹{amount:,}**"
+            ),
+            color=discord.Color.gold(),
         )
 
-        if len(set(_slot)) == 1:
-            multiplier = payouts[_slot[0]]
-            final_embed.description += f"**You won!**\n-# Payout: ₹{amount*multiplier}"
+        msg = await ctx.reply(embed=embed)
 
+        # give the animated emoji some time to spin
+        await asyncio.sleep(1.2)
+
+        # reveal reel 1
+        embed.description = (
+            f"# {slot[0]} {SLOT_EMOJI} {SLOT_EMOJI}\n\n"
+            f"-# Betting **₹{amount:,}**"
+        )
+        await msg.edit(embed=embed)
+
+        await asyncio.sleep(0.6)
+
+        # reveal reel 2
+        embed.description = (
+            f"# {slot[0]} {slot[1]} {SLOT_EMOJI}\n\n"
+            f"-# Betting **₹{amount:,}**"
+        )
+        await msg.edit(embed=embed)
+
+        await asyncio.sleep(0.6)
+
+        # reveal reel 3
+        embed.description = (
+            f"# {' '.join(slot)}\n\n"
+            f"-# Betting **₹{amount:,}**"
+        )
+        await msg.edit(embed=embed)
+
+        await asyncio.sleep(0.4)
+
+        # result
+        if len(set(slot)) == 1:
+            multiplier = payouts[slot[0]]
+            winnings = amount * multiplier
+
+            embed.color = discord.Color.green()
+            embed.description += (
+                "\n\n"
+                "**🎉 You Won!**\n"
+                f"**Multiplier:** ×{multiplier}\n"
+                f"**Payout:** ₹{winnings:,}"
+            )
         else:
-            final_embed.description += f"**You lost!**\n-# Try giving it another try 🤑"
+            embed.color = discord.Color.red()
+            embed.description += (
+                "\n\n"
+                "**❌ You Lost!**\n"
+                "Better luck next spin!"
+            )
 
-        await msg.edit(embeds=[final_embed])
+        await msg.edit(embed=embed)
 
 
 async def setup(bot: BoBit):
