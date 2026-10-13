@@ -1,9 +1,27 @@
+import datetime
 import discord
-from discord.ext import commands
+from discord.ext import commands, tasks
 from io import BytesIO
 from utils.bot import BoBit
-from utils.consts import WELCOME_CHANNEL_ID
+from utils.consts import WELCOME_CHANNEL_ID, COUNTDOWN_CHANNEL_ID
 from utils.welcomer import WeclomeBanner
+
+IST = datetime.timezone(datetime.timedelta(hours=5, minutes=30))
+
+
+def get_new_year_countdown_topic() -> str:
+    """Return the channel topic string for the New Year countdown."""
+    today = datetime.datetime.now(IST).date()
+    if today.month == 1 and today.day == 1:
+        return f"🎉 Happy New Year {today.year}! 🎉 Welcome to BIT!"
+
+    next_year = today.year + 1
+    new_year_date = datetime.date(next_year, 1, 1)
+    days_left = (new_year_date - today).days
+
+    if days_left == 1:
+        return f"⏳ 1 day left until {next_year} 🎆"
+    return f"⏳ {days_left} days left until {next_year} 🎆"
 
 
 class Listeners(commands.Cog):
@@ -11,6 +29,46 @@ class Listeners(commands.Cog):
         super().__init__()
         self.bot = bot
         self.banner = WeclomeBanner()
+        self.update_year_countdown.start()
+
+    def cog_unload(self):
+        self.update_year_countdown.cancel()
+
+    async def _update_countdown_topic(self):
+        """Helper to update the countdown channel topic."""
+        channel = self.bot.get_channel(COUNTDOWN_CHANNEL_ID)
+        if channel is None:
+            # try fetch if not in cache (e.g. after restart)
+            try:
+                channel = await self.bot.fetch_channel(COUNTDOWN_CHANNEL_ID)
+            except (discord.NotFound, discord.Forbidden, discord.HTTPException) as e:
+                self.bot.log.warning(f"[Countdown] Could not fetch channel {COUNTDOWN_CHANNEL_ID}: {e}")
+                return
+
+        if not isinstance(channel, discord.TextChannel):
+            self.bot.log.warning(f"[Countdown] Channel {COUNTDOWN_CHANNEL_ID} is not a TextChannel, skipping.")
+            return
+
+        new_topic = get_new_year_countdown_topic()
+        if channel.topic == new_topic:
+            return
+
+        try:
+            await channel.edit(topic=new_topic, reason="Daily New Year countdown update")
+            self.bot.log.info(f"[Countdown] Updated channel topic to: {new_topic}")
+        except discord.Forbidden:
+            self.bot.log.error(f"[Countdown] Missing permissions to edit channel {COUNTDOWN_CHANNEL_ID} topic")
+        except discord.HTTPException as e:
+            self.bot.log.error(f"[Countdown] Failed to update countdown topic: {e}")
+
+    @tasks.loop(time=datetime.time(hour=0, minute=0, tzinfo=IST))
+    async def update_year_countdown(self):
+        await self._update_countdown_topic()
+
+    @update_year_countdown.before_loop
+    async def before_update_year_countdown(self):
+        await self.bot.wait_until_ready()
+        await self._update_countdown_topic()
 
     @commands.Cog.listener()
     async def on_member_join(self, member: discord.Member):
