@@ -11,4 +11,4 @@ class Stocks(commands.Cog):
 
 
 async def setup(bot: BoBit):
-    await bot.add_cog(bot = bot)
+    await bot.add_cog(Stocks(bot = bot))
