@@ -1,6 +1,7 @@
 import discord
 from discord.ext import commands
 from utils.bot import BoBit
+from utils.consts import SHITMEME_IMAGE_PATH
 from PIL import Image
 from io import BytesIO
 
@@ -11,7 +12,7 @@ class ShitMeme(commands.Cog):
 
     @commands.command(name = "shit")
     async def create_shit(self, ctx: commands.Context, member: discord.Member):
-        template = Image.open("assets/images/shitmeme.jpg")
+        template = Image.open(SHITMEME_IMAGE_PATH)
 
         avatar_bytes = await member.display_avatar.read()
         avatar = BytesIO(avatar_bytes)

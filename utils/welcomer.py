@@ -1,14 +1,15 @@
 from PIL import Image, ImageDraw, ImageFont, ImageChops, ImageFilter, ImageEnhance
 import discord
 from io import BytesIO
+from utils.consts import FONT_MAKISUPA_PATH, WELCOME_BG_PATH
 
 
 class WeclomeBanner():
     def __init__(self):
         self.font = {
-            "header": ImageFont.truetype("assets/fonts/MAKISUPA.ttf", 72),
-            "username": ImageFont.truetype("assets/fonts/MAKISUPA.ttf", 52),
-            "subtitle": ImageFont.truetype("assets/fonts/MAKISUPA.ttf", 30),
+            "header": ImageFont.truetype(FONT_MAKISUPA_PATH, 72),
+            "username": ImageFont.truetype(FONT_MAKISUPA_PATH, 52),
+            "subtitle": ImageFont.truetype(FONT_MAKISUPA_PATH, 30),
         }
 
     def circle(self, pfp, size=(220, 220)):
@@ -56,7 +57,7 @@ class WeclomeBanner():
 
     def make_banner(self, username, pfp, member_count=None):
         pfp = Image.open(pfp)
-        bg = Image.open("assets/images/background.png")
+        bg = Image.open(WELCOME_BG_PATH)
         bx, by = bg.size
 
         bg = bg.convert("RGBA")

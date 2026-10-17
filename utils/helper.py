@@ -14,6 +14,7 @@ from PIL import Image, ImageDraw, ImageFont, ImageOps, ImageEnhance
 from cbvx import iml
 from typing import Tuple
 from lrclib import LrcLibAPI
+from utils.consts import SPOTIFY_EMOJI, FONT_SPOTIFY_PATH, FONT_INTERBLACK_PATH
 
 class Spotify:
     __slots__ = ("member", "bot", "embed", "regex", "headers", "counter")
@@ -38,8 +39,8 @@ class Spotify:
         result = csp.get_base()
         base = Image.frombytes("RGB", (600, 300), result)
 
-        font0 = ImageFont.truetype("assets/fonts/spotify.ttf", 35)
-        font2 = ImageFont.truetype("assets/fonts/spotify.ttf", 18)
+        font0 = ImageFont.truetype(FONT_SPOTIFY_PATH, 35)
+        font2 = ImageFont.truetype(FONT_SPOTIFY_PATH, 18)
 
         draw = ImageDraw.Draw(base)
         draw.rounded_rectangle(
@@ -104,7 +105,7 @@ class Spotify:
                 url=url,
                 style=discord.ButtonStyle.green,
                 label="\u2007Open in Spotify",
-                emoji="<:spotify:983984483755765790>",
+                emoji=SPOTIFY_EMOJI,
             )
         )
         return (image, view)
@@ -176,7 +177,7 @@ def create_quote_buffer(avatar, quote, display_name, username):
 
     template = Image.new("RGBA", (WIDTH, HEIGHT), "black")
 
-    FONT = "assets/fonts/InterBlack.ttf"
+    FONT = FONT_INTERBLACK_PATH
 
     quote_font = ImageFont.truetype(FONT, 64)
     info_font = ImageFont.truetype(FONT, 34)

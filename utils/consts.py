@@ -29,6 +29,19 @@ class Colors:
     GREEN = 0x57F287
     LEETCODE = 0xF89F1B
     STARBOARD = 0xFFAC33
+    BLURPLE = 0x5865F2
+    BLUE = 0x3498DB
+    GOLD = 0xF1C40F
+    DARK_BLUE = 0x206694
+    DARK_EMBED = 0x2B2D31
+    GREY = 0x99AAB5
+    TICKET_PANEL = 0x8B6FFC
+    TICKET_CREATE = 0xE5FFB8
+    TICKET_CLOSE = 0xFFB8C4
+    WIN_GREEN = 0x4CAF50
+    LOSS_RED = 0xE53935
+    TIE_YELLOW = 0xFFB300
+    BLACKJACK_DEFAULT = 0x26A69A
 
 
 DEAD_CHAT_MESSAGES = [
@@ -67,3 +80,66 @@ DEAD_CHAT_MESSAGES = [
 NASA_POD = "https://api.nasa.gov/planetary/apod"
 
 SLOT_EMOJI = "<a:slots:1534443340546838568>"
+SPOTIFY_EMOJI = "<:spotify:983984483755765790>"
+ROULETTE_EMOJI = "<a:roulette:1535732657957109760>"
+
+OWNER_IDS = {
+    782909992864186368,  # Shas
+    748053138354864229,  # Ayu
+    725966088004698112,  # Ayu alt
+}
+
+ISS_API_URL = "https://api.wheretheiss.at/v1/satellites/25544"
+ISS_TRACK_CHANNEL_ID = 1525828633485119528
+ISS_TRACK_MESSAGE_ID = 1525830057732608041
+ISS_POD_THREAD_CHANNEL_ID = 1525802023163789393
+YANDEX_STATIC_MAP_BASE = "https://static-maps.yandex.ru/1.x/"
+NASA_LOGO_URL = "https://www.nasa.gov/sites/default/files/thumbnails/image/nasa-logo-web-rgb.png"
+ISS_IMAGE_URL = "http://www.nasa.gov/sites/default/files/thumbnails/image/final_configuration_of_iss.jpg"
+
+PISTON_API_URL = "https://emkc.org/api/v1/piston/execute"
+
+LEETCODE_CONTEST_BASE_URL = "https://leetcode.com/contest/"
+
+BLACKJACK_DEALER_CARD_LINK = "https://www.youtube.com/watch?v=lpiB2wMc49g"
+BLACKJACK_PLAYER_CARD_LINK = "https://www.youtube.com/watch?v=Ncgv7ruZ6HU"
+BLACKJACK_FACE_VALUE = 10
+BLACKJACK_ACE_MIN = 1
+BLACKJACK_ACE_MAX = 11
+BLACKJACK_SUITS = ['♠', '♥', '♦', '♣']
+BLACKJACK_TIMEOUT = 90
+
+SLOT_EMOJIS = ["💎", "⭐", "🔔", "🍇", "🍑", "🍒"]
+SLOT_WEIGHTS = [4, 7, 10, 20, 28, 45]
+SLOT_PAYOUTS = {
+    "🍒": 2,
+    "🍑": 3,
+    "🍇": 5,
+    "🔔": 10,
+    "⭐": 25,
+    "💎": 100,
+}
+SLOT_DEFAULT_BET = 10
+
+ROULETTE_RED_NUMBERS = [1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36]
+ROULETTE_BLACK_NUMBERS = [2, 4, 6, 8, 10, 11, 13, 15, 17, 20, 22, 24, 26, 28, 29, 31, 33, 35]
+ROULETTE_GREEN_NUMBERS = [0]
+ROULETTE_NUMBER_MULTIPLIER = 5
+ROULETTE_COLOR_MULTIPLIER = 2
+ROULETTE_DEFAULT_BET = 100
+
+RACE_HORSES = ["Thunder", "Shadow", "Blaze", "Storm", "Star"]
+RACE_TRACK_SIZE = 20
+
+FACULTY_DATA_PATH = "assets/data/bit.json"
+FACULTY_DEPARTMENTS = ["civil", "mech", "eee", "ece", "cse", "eie", "iem", "ete", "ise", "ai", "cyb", "ds", "rai", "vlsi", "mba", "mca", "phy", "chem", "math"]
+
+FONT_MAKISUPA_PATH = "assets/fonts/MAKISUPA.ttf"
+FONT_SPOTIFY_PATH = "assets/fonts/spotify.ttf"
+FONT_INTERBLACK_PATH = "assets/fonts/InterBlack.ttf"
+WELCOME_BG_PATH = "assets/images/background.png"
+SHITMEME_IMAGE_PATH = "assets/images/shitmeme.jpg"
+
+AUTOSPAM_WINDOW_SECONDS = 15
+AUTOSPAM_MESSAGE_THRESHOLD = 10
+AUTOSPAM_SLOWMODE_DELAY = 3

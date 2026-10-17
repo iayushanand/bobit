@@ -1,7 +1,7 @@
 import time
 import discord
 from discord import ui
-from utils.consts import OPEN_TICKET_CATEGORY, CLOSED_TICKET_CATEGORY, TICKET_HANDLER_ROLE_ID, TICKET_LOG_CHANNEL
+from utils.consts import OPEN_TICKET_CATEGORY, CLOSED_TICKET_CATEGORY, TICKET_HANDLER_ROLE_ID, TICKET_LOG_CHANNEL, Colors
 
 
 class ReasonModal(ui.Modal):
@@ -44,7 +44,7 @@ class ReasonModal(ui.Modal):
             embed=discord.Embed(
                 title="Ticket Created!",
                 description="Don't ping a staff member, they will be here soon.",
-                color=discord.Color.green()
+                color=Colors.GREEN
             ).add_field(name="📖 Reason", value=reason),
             view=CloseButton()
         )
@@ -52,7 +52,7 @@ class ReasonModal(ui.Modal):
         await interaction.followup.send(
             embed=discord.Embed(
                 description="Created your ticket in {0}".format(channel.mention),
-                color=discord.Color.blurple()
+                color=Colors.BLURPLE
             ),
             ephemeral=True
         )
@@ -61,7 +61,7 @@ class ReasonModal(ui.Modal):
         ticket_id = int(time.time())
         embed = discord.Embed(
             title="Ticket Created",
-            color=0xe5ffb8
+            color=Colors.TICKET_CREATE
         ).add_field(
             name="🆔 Ticket ID",
             value=str(ticket_id),
@@ -141,7 +141,7 @@ class CloseButton(ui.View):
         await interaction.channel.send(
             embed=discord.Embed(
                 description="Ticket Closed!",
-                color=discord.Color.red()
+                color=Colors.RED
             ),
         )
 
@@ -165,7 +165,7 @@ class CloseButton(ui.View):
 
         embed = discord.Embed(
             title="Ticket Closed",
-            color=0xffb8c4
+            color=Colors.TICKET_CLOSE
         ).add_field(
             name="🆔 Ticket ID",
             value=str(ticket_id),

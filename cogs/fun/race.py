@@ -4,6 +4,7 @@ import random
 
 from discord.ext import commands
 from utils.bot import BoBit
+from utils.consts import RACE_HORSES, RACE_TRACK_SIZE
 
 class HorseRace(commands.Cog):
     def __init__(self, bot):
@@ -11,7 +12,7 @@ class HorseRace(commands.Cog):
 
     @commands.command(name="race", aliases=["hr"])
     async def horse_race(self, ctx: commands.Context, horse: str = None):
-        horses = ["Thunder", "Shadow", "Blaze", "Storm", "Star"]
+        horses = RACE_HORSES
 
         if not horse or horse.lower() not in [h.lower() for h in horses]:
             await ctx.reply(
@@ -21,7 +22,7 @@ class HorseRace(commands.Cog):
 
         horse = next(h for h in horses if h.lower() == horse.lower())
 
-        track_size = 20
+        track_size = RACE_TRACK_SIZE
 
         horse_pos = {h: track_size for h in horses}
 

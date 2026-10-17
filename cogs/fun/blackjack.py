@@ -3,13 +3,23 @@ import random
 from discord.ext import commands
 import discord
 from discord import app_commands
+from utils.consts import (
+    Colors,
+    BLACKJACK_DEALER_CARD_LINK,
+    BLACKJACK_PLAYER_CARD_LINK,
+    BLACKJACK_FACE_VALUE,
+    BLACKJACK_ACE_MIN,
+    BLACKJACK_ACE_MAX,
+    BLACKJACK_SUITS,
+    BLACKJACK_TIMEOUT,
+)
 
 # conf
-BJ_FACE = 10
-BJ_ACE_MIN = 1
-BJ_ACE_MAX = 11
+BJ_FACE = BLACKJACK_FACE_VALUE
+BJ_ACE_MIN = BLACKJACK_ACE_MIN
+BJ_ACE_MAX = BLACKJACK_ACE_MAX
 
-SUITS = ['♠', '♥', '♦', '♣']
+SUITS = BLACKJACK_SUITS
 FACES = ['A', 'J', 'Q', 'K'] + [str(x) for x in range(1, 10)]
 
 
@@ -44,7 +54,7 @@ def clean(x):
 
 # It's a view that has three buttons, each with a different label and style
 class Buttons(discord.ui.View):
-    def __init__(self, *, timeout=90, hands=None):
+    def __init__(self, *, timeout=BLACKJACK_TIMEOUT, hands=None):
         """
         The function __init__() is a constructor that initializes the class Blackjack Game
 
@@ -56,13 +66,13 @@ class Buttons(discord.ui.View):
             hands = {"player": [], "dealer": []}
         self.hands = hands
         self.action = None
-        self.SUITS = ['♠', '♥', '♦', '♣']
+        self.SUITS = BLACKJACK_SUITS
         self.FACES = ['A', 'J', 'Q', 'K'] + [str(x) for x in range(1, 10)]
         self.outcomes = {
-            "win": {"message": 'You win! ', "color": 0x4CAF50},
-            "loss": {"message": 'You lose! ', "color": 0xE53935},
-            "tie": {"message": 'You tied. ', "color": 0xFFB300},
-            "other": {"message": "", "color": 0xFFB300}
+            "win": {"message": 'You win! ', "color": Colors.WIN_GREEN},
+            "loss": {"message": 'You lose! ', "color": Colors.LOSS_RED},
+            "tie": {"message": 'You tied. ', "color": Colors.TIE_YELLOW},
+            "other": {"message": "", "color": Colors.TIE_YELLOW}
         }
         self.outcome = None
         self.end = False
@@ -100,16 +110,16 @@ class Buttons(discord.ui.View):
         else:
 
             renderEmbed = discord.Embed(title=f"{interaction.user.name}'s blackjack game",
-                                        color=0x26A69A if self.outcome is None else self.outcome['color'])
+                                        color=Colors.BLACKJACK_DEFAULT if self.outcome is None else self.outcome['color'])
             renderEmbed.add_field(name=f"Bobit (Dealer)",
                                   value="Cards: " + ''.join(
-                                      f"[`{str(self.hands['dealer'][0])} `](https://www.youtube.com/watch?v=lpiB2wMc49g) "
-                                      f"[` ? `](https://www.youtube.com/watch?v=lpiB2wMc49g)")
+                                      f"[`{str(self.hands['dealer'][0])} `]({BLACKJACK_DEALER_CARD_LINK}) "
+                                      f"[` ? `]({BLACKJACK_DEALER_CARD_LINK})")
                                         + "\nTotal: `" + str(total([clean(x) for x in self.hands["dealer"]])) + "`")
 
             renderEmbed.add_field(name=f"{interaction.user.name} (Player)",
                                   value="Cards: " + ''.join(
-                                      f"[`{str(x)}`](https://www.youtube.com/watch?v=Ncgv7ruZ6HU) " for x in
+                                      f"[`{str(x)}`]({BLACKJACK_PLAYER_CARD_LINK}) " for x in
                                       self.hands["player"]) + "\nTotal: `" + str(
                                       total(
                                           [clean(x) for x in
@@ -151,16 +161,16 @@ class Buttons(discord.ui.View):
             self.stop()
         else:
             renderEmbed = discord.Embed(title=f"{interaction.user.name}'s blackjack game",
-                                        color=0x26A69A if self.outcome is None else self.outcome['color'])
+                                        color=Colors.BLACKJACK_DEFAULT if self.outcome is None else self.outcome['color'])
             renderEmbed.add_field(name=f"Bobit (Dealer)",
                                   value="Cards: " + ''.join(
-                                      f"[`{str(self.hands['dealer'][0])}`](https://www.youtube.com/watch?v=lpiB2wMc49g) "
-                                      f"[` ? `](https://www.youtube.com/watch?v=lpiB2wMc49g)")
+                                      f"[`{str(self.hands['dealer'][0])}`]({BLACKJACK_DEALER_CARD_LINK}) "
+                                      f"[` ? `]({BLACKJACK_DEALER_CARD_LINK})")
                                         + "\nTotal: `" + str(total([clean(x) for x in self.hands["dealer"]])) + "`")
 
             renderEmbed.add_field(name=f"{interaction.user.name} (Player)",
                                   value="Cards: " + ''.join(
-                                      f"[`{str(x)}`](https://www.youtube.com/watch?v=Ncgv7ruZ6HU) " for x in
+                                      f"[`{str(x)}`]({BLACKJACK_PLAYER_CARD_LINK}) " for x in
                                       self.hands["player"]) + "\nTotal: `" + str(
                                       total(
                                           [clean(x) for x in
@@ -176,13 +186,13 @@ class Blackjack(commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         # It's a class that has a bunch of variables that are used in the class.
         self.bot = bot
-        self.SUITS = ['♠', '♥', '♦', '♣']
+        self.SUITS = BLACKJACK_SUITS
         self.FACES = ['A', 'J', 'Q', 'K'] + [str(x) for x in range(1, 10)]
         self.outcomes = {
-            "win": {"message": 'You win! ', "color": 0x4CAF50},
-            "loss": {"message": 'You lose! ', "color": 0xE53935},
-            "tie": {"message": 'You tied. ', "color": 0xFFB300},
-            "other": {"message": "", "color": 0xFFB300}
+            "win": {"message": 'You win! ', "color": Colors.WIN_GREEN},
+            "loss": {"message": 'You lose! ', "color": Colors.LOSS_RED},
+            "tie": {"message": 'You tied. ', "color": Colors.TIE_YELLOW},
+            "other": {"message": "", "color": Colors.TIE_YELLOW}
         }
 
     @app_commands.command(description="Play blackjack")
@@ -207,16 +217,16 @@ class Blackjack(commands.Cog):
             hands["dealer"] = [' ♣ 4', ' ♣ 9']
 
         renderEmbed = discord.Embed(title=f"{interaction.user.name}'s blackjack game",
-                                    colour=0x26A69A)
+                                    colour=Colors.BLACKJACK_DEFAULT)
         renderEmbed.add_field(name=f"Bobit (Dealer)",
                               value="Cards: " + ''.join(
-                                  f"[`{str(hands['dealer'][0])} `](https://www.youtube.com/watch?v=lpiB2wMc49g) "
-                                  f"[` ? `](https://www.youtube.com/watch?v=lpiB2wMc49g)")
+                                  f"[`{str(hands['dealer'][0])} `]({BLACKJACK_DEALER_CARD_LINK}) "
+                                  f"[` ? `]({BLACKJACK_DEALER_CARD_LINK})")
                                     + "\nTotal: `" + str(total([clean(x) for x in hands["dealer"]])) + "`")
 
         renderEmbed.add_field(name=f"{interaction.user.name} (Player)",
                               value="Cards: " + ''.join(
-                                  f"[`{str(x)}`](https://www.youtube.com/watch?v=Ncgv7ruZ6HU) " for x in
+                                  f"[`{str(x)}`]({BLACKJACK_PLAYER_CARD_LINK}) " for x in
                                   hands["player"]) + "\nTotal: `" + str(
                                   total(
                                       [clean(x) for x in
@@ -268,13 +278,13 @@ class Blackjack(commands.Cog):
             finalEmbed.add_field(name=outcome['message'], value='** **', inline=False)
             finalEmbed.add_field(name=f"Bobit (Dealer)",
                                  value="Cards: " + ''.join(
-                                     f"[`{str(x)}`](https://www.youtube.com/watch?v=lpiB2wMc49g) " for x in
+                                     f"[`{str(x)}`]({BLACKJACK_DEALER_CARD_LINK}) " for x in
                                      hands["dealer"])
                                        + "\nTotal: `" + str(total([clean(x) for x in hands["dealer"]])) + "`")
 
             finalEmbed.add_field(name=f"{interaction.user.name} (Player)",
                                  value="Cards: " + ''.join(
-                                     f"[`{str(x)}`](https://www.youtube.com/watch?v=Ncgv7ruZ6HU) " for x in
+                                     f"[`{str(x)}`]({BLACKJACK_PLAYER_CARD_LINK}) " for x in
                                      hands["player"]) + "\nTotal: `" + str(
                                      total(
                                          [clean(x) for x in

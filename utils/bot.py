@@ -6,6 +6,7 @@ import traceback
 from dotenv import load_dotenv
 from utils.database import Database
 from utils.logger import Logger
+from utils.consts import OWNER_IDS
 
 load_dotenv()
 
@@ -19,11 +20,7 @@ class BoBit(commands.Bot):
             activity=discord.Activity(type=discord.ActivityType.watching, name="over BIT Discord"),
             status=discord.Status.dnd
         )
-        self.owner_ids = {
-            782909992864186368, # Shas
-            748053138354864229, # Ayu
-            725966088004698112 # Ayu alt
-        }
+        self.owner_ids = OWNER_IDS
         self.TOKEN = os.getenv("TOKEN")
         self.db = Database(os.getenv("MONGOURI"))
         self.col = self.db.collection

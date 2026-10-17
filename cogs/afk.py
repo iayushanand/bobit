@@ -37,7 +37,7 @@ class AFK(commands.Cog):
 
         embed = discord.Embed(
             description=f"{ctx.author.mention}, I've set your AFK: **{reason}**",
-            color=discord.Color.blurple()
+            color=Colors.BLURPLE
         )
         await ctx.send(embed=embed)
 
@@ -51,7 +51,7 @@ class AFK(commands.Cog):
             if data:
                 embed = discord.Embed(
                     description=f"{user.mention} is AFK: **{data['reason']}** (<t:{data['afk_at']}:R>)",
-                    color=discord.Color.blurple()
+                    color=Colors.BLURPLE
                 )
                 await message.reply(embed=embed, mention_author=False)
 
@@ -69,7 +69,7 @@ class AFK(commands.Cog):
 
             embed = discord.Embed(
                 description=f"Welcome back! I've removed your AFK.",
-                color=discord.Color.blue()
+                color=Colors.BLUE
             )
             await message.reply(embed=embed, mention_author=False, delete_after=5)
 

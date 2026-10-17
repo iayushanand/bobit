@@ -1,5 +1,6 @@
 import discord
 from discord.ext import commands
+from utils.consts import Colors
 from utils.ui.ticket import CreateButton, CloseButton, TrashButton
 
 
@@ -25,7 +26,7 @@ class TicketCog(commands.Cog):
                 "Opening a ticket without a valid reason will get you warned/blacklisted.\n\n"
                 "__**Do not open support tickets for Coding Help. Doing so will get you warned.**__"
             ),
-            color=0x8b6ffc
+            color=Colors.TICKET_PANEL
         )
         await ctx.send(embed=embed, view=CreateButton())
 

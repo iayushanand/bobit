@@ -1,6 +1,6 @@
 import discord
 from discord.ext import commands, tasks
-from utils.consts import LEETCODE_CHANNEL_ID, LEETCODE_DAILY_API, LEETCODE_UPCOMING_API, LEETCODE_ROLE_ID, LEETCODE_ICON, Colors
+from utils.consts import LEETCODE_CHANNEL_ID, LEETCODE_DAILY_API, LEETCODE_UPCOMING_API, LEETCODE_ROLE_ID, LEETCODE_ICON, LEETCODE_CONTEST_BASE_URL, Colors
 
 from aiohttp import ClientTimeout
 import html
@@ -82,7 +82,7 @@ class LeetCode(commands.Cog):
                         title=f"🚀 {title} is now LIVE!",
                         description=f"The contest has started and will run for {duration // 60} minutes.\nGood luck and have fun!",
                         color=Colors.LEETCODE,
-                        url=f"https://leetcode.com/contest/{slug}/"
+                        url=f"{LEETCODE_CONTEST_BASE_URL}{slug}/"
                     )
                     embed.set_author(name="LeetCode Contest", icon_url=LEETCODE_ICON)
                     

@@ -1,7 +1,7 @@
 import discord
 from discord.ext import commands
 from utils.bot import BoBit
-from utils.consts import SLOT_EMOJI
+from utils.consts import SLOT_EMOJI, SLOT_EMOJIS, SLOT_WEIGHTS, SLOT_PAYOUTS, SLOT_DEFAULT_BET, Colors
 import random
 import asyncio
 
@@ -17,11 +17,11 @@ class SlotMachine(commands.Cog):
         # pls follow PEP8 and set amount inside the function instead of
         # the function arguments for cleaner, more understandable code ~ ayu
         if amount is None:
-            amount = 10
+            amount = SLOT_DEFAULT_BET
 
-        emojis = ["💎", "⭐", "🔔", "🍇", "🍑", "🍒"]
+        emojis = SLOT_EMOJIS
         # feel free to tweak these weights.
-        weights = [4, 7, 10, 20, 28, 45]
+        weights = SLOT_WEIGHTS
         # currently - 
         # the total weight is 114... so the probability of each symbol on a single reel is:
 
@@ -42,14 +42,7 @@ class SlotMachine(commands.Cog):
         # 🍑🍑🍑	1.4817% (≈ 1 in 67) [six seven 👅]
         # 🍒🍒🍒	6.1480% (≈ 1 in 16)
 
-        payouts = {
-            "🍒": 2,
-            "🍑": 3,
-            "🍇": 5,
-            "🔔": 10,
-            "⭐": 25,
-            "💎": 100,
-        }
+        payouts = SLOT_PAYOUTS
 
         # roll the result before the animation
         slot = random.choices(emojis, weights=weights, k=3)
@@ -59,7 +52,7 @@ class SlotMachine(commands.Cog):
                 f"# {SLOT_EMOJI} {SLOT_EMOJI} {SLOT_EMOJI}\n\n"
                 f"-# Betting **₹{amount:,}**"
             ),
-            color=discord.Color.gold(),
+            color=Colors.GOLD,
         )
 
         msg = await ctx.reply(embed=embed)
@@ -99,7 +92,7 @@ class SlotMachine(commands.Cog):
             multiplier = payouts[slot[0]]
             winnings = amount * multiplier
 
-            embed.color = discord.Color.green()
+            embed.color = Colors.GREEN
             embed.description += (
                 "\n\n"
                 "**🎉 You Won!**\n"
@@ -107,7 +100,7 @@ class SlotMachine(commands.Cog):
                 f"**Payout:** ₹{winnings:,}"
             )
         else:
-            embed.color = discord.Color.red()
+            embed.color = Colors.RED
             embed.description += (
                 "\n\n"
                 "**❌ You Lost!**\n"

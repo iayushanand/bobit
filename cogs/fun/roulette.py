@@ -3,6 +3,7 @@ import random
 import asyncio
 from discord.ext import commands
 from utils.bot import BoBit
+from utils.consts import ROULETTE_EMOJI, ROULETTE_RED_NUMBERS, ROULETTE_BLACK_NUMBERS, ROULETTE_GREEN_NUMBERS, ROULETTE_NUMBER_MULTIPLIER, ROULETTE_COLOR_MULTIPLIER, ROULETTE_DEFAULT_BET
 
 class Roulette(commands.Cog):
     def __init__(self, bot: BoBit):
@@ -11,9 +12,9 @@ class Roulette(commands.Cog):
     @commands.command(name = "roulette", aliases=["rou"])
     async def roulette(self, ctx: commands.Context, bet: str = None, amount: int = None):
         roulette_color = {
-            "red": [1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36],
-            "black": [2, 4, 6, 8, 10, 11, 13, 15, 17, 20, 22, 24, 26, 28, 29, 31, 33, 35],
-            "green": [0]
+            "red": ROULETTE_RED_NUMBERS,
+            "black": ROULETTE_BLACK_NUMBERS,
+            "green": ROULETTE_GREEN_NUMBERS
         }
 
         if not bet:
@@ -21,7 +22,7 @@ class Roulette(commands.Cog):
             return
 
         if not amount:
-            amount = 100
+            amount = ROULETTE_DEFAULT_BET
 
         winning_bet = random.randint(0,36)
         color = None
@@ -38,17 +39,17 @@ class Roulette(commands.Cog):
             parity = "odd"
         embed = discord.Embed(
             title = "Roulette",
-            description="# <a:roulette:1535732657957109760>",
+            description=f"# {ROULETTE_EMOJI}",
             color = discord.Color.random()
         )
         msg = await ctx.reply(embed = embed)
-        embed.description = f"🎱 **`{winning_bet}`** <a:roulette:1535732657957109760> **`{color.upper()}` 🔢 `{parity.upper()}`**\n\n"
+        embed.description = f"🎱 **`{winning_bet}`** {ROULETTE_EMOJI} **`{color.upper()}` 🔢 `{parity.upper()}`**\n\n"
         await asyncio.sleep(5)
 
         if bet.isdigit():
             if 0<=int(bet)<=36:
                 if int(bet) == winning_bet:
-                    multiplier = 5
+                    multiplier = ROULETTE_NUMBER_MULTIPLIER
                     embed.description+=f"**🎊 YOU WON!!!**\n 💰 **₹{(multiplier * amount):,}**!"
                 else:
                     embed.description+=f"**You lost!!!**"
@@ -58,7 +59,7 @@ class Roulette(commands.Cog):
                 return
         elif bet in ["red", "black", "green", "even", "odd"]:
             if bet == color or bet == parity:
-                multiplier = 2
+                multiplier = ROULETTE_COLOR_MULTIPLIER
                 embed.description += f"**🎊 YOU WON!!!**\n 💰 **₹{(multiplier * amount):,}**!"
             else:
                 embed.description += "You lost!!!"

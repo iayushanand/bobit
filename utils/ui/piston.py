@@ -6,6 +6,7 @@ from discord import ui
 from discord.ext import commands, tasks
 from more_itertools import sliced
 from utils.bot import BoBit
+from utils.consts import PISTON_API_URL
 
 if TYPE_CHECKING:
     from typing_extensions import Self
@@ -48,7 +49,7 @@ class Piston(discord.ui.View):
     @tasks.loop(seconds=1, count=1)
     async def get_code_out(self):
         res = await self.session.post(
-            url = "https://emkc.org/api/v1/piston/execute",
+            url = PISTON_API_URL,
             data = {"language": self.lang, "source": self.code}
         )
         self.res = await res.json()

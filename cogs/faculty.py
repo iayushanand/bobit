@@ -1,6 +1,7 @@
 import discord
 from discord.ext import commands
 from utils.bot import BoBit
+from utils.consts import FACULTY_DATA_PATH, FACULTY_DEPARTMENTS
 from utils.ui.faculty import FacultyView, build_department_embed
 import json
 
@@ -10,14 +11,14 @@ class Faculty(commands.Cog):
         
     @commands.command(name = "faculty", aliases=["fc"])
     async def faculty_info(self, ctx: commands.Context, department: str = None):
-        departments = ["civil", "mech", "eee", "ece", "cse", "eie", "iem", "ete", "ise", "ai", "cyb", "ds", "rai", "vlsi", "mba", "mca", "phy", "chem", "math"]
+        departments = FACULTY_DEPARTMENTS
         if department not in departments:
             fail_embed = discord.Embed(
                 description = ":x: Please choose a faculty from the following - `{0}`".format(", ".join(departments))
             )
             return await ctx.reply(embed = fail_embed)
         
-        with open("assets/data/bit.json", 'r', encoding="utf-8") as f:
+        with open(FACULTY_DATA_PATH, 'r', encoding="utf-8") as f:
             data = json.load(f)
         
         dept = next((d for d in data if d["id"] == department), None)

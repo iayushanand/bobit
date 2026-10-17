@@ -1,7 +1,7 @@
 import discord
 from discord.ext import commands, tasks
 from utils.bot import BoBit
-from utils.consts import Colors
+from utils.consts import Colors, AUTOSPAM_WINDOW_SECONDS, AUTOSPAM_MESSAGE_THRESHOLD, AUTOSPAM_SLOWMODE_DELAY
 from collections import defaultdict
 import time
 
@@ -29,7 +29,7 @@ class AntiSpam(commands.Cog):
     async def cog_unload(self):
         self.slowmode_revert_task.cancel()
 
-    @tasks.loop(seconds=15)
+    @tasks.loop(seconds=AUTOSPAM_WINDOW_SECONDS)
     async def slowmode_revert_task(self):
         current_time = time.time()
         for channel_id in list(self.auto_slowmode_channels):
@@ -37,7 +37,7 @@ class AntiSpam(commands.Cog):
             if channel_id in self.message_tracker:
                 self.message_tracker[channel_id] = [
                     t for t in self.message_tracker[channel_id]
-                    if current_time - t <= 15
+                    if current_time - t <= AUTOSPAM_WINDOW_SECONDS
                 ]
                 count = len(self.message_tracker[channel_id])
             else:
@@ -85,14 +85,14 @@ class AntiSpam(commands.Cog):
         self.message_tracker[channel.id].append(current_time)
         self.message_tracker[channel.id] = [
             t for t in self.message_tracker[channel.id]
-            if current_time - t <= 15
+            if current_time - t <= AUTOSPAM_WINDOW_SECONDS
         ]
 
-        if len(self.message_tracker[channel.id]) > 10 and channel.id not in self.auto_slowmode_channels:
+        if len(self.message_tracker[channel.id]) > AUTOSPAM_MESSAGE_THRESHOLD and channel.id not in self.auto_slowmode_channels:
             original = channel.slowmode_delay
             self.original_slowmode[channel.id] = original
 
-            await channel.edit(slowmode_delay=3, reason="Auto-slowmode: High traffic detected")
+            await channel.edit(slowmode_delay=AUTOSPAM_SLOWMODE_DELAY, reason="Auto-slowmode: High traffic detected")
             self.auto_slowmode_channels.add(channel.id)
 
             await self.bot.db.auto_slowmode.insert_one({

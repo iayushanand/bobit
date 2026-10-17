@@ -1,5 +1,6 @@
 import discord
 from discord import ui
+from utils.consts import Colors
 
 
 def build_department_embed(dept: dict) -> discord.Embed:
@@ -15,7 +16,7 @@ def build_department_embed(dept: dict) -> discord.Embed:
     )
     stats = dept['stats']
 
-    embed = discord.Embed(title=name, description=desc, color=0x2b2d31)
+    embed = discord.Embed(title=name, description=desc, color=Colors.DARK_EMBED)
     embed.add_field(name="Since", value=since, inline=True)
     embed.add_field(name="HOD", value=hod_name, inline=True)
     embed.add_field(name="Email", value=f"[{email}](mailto:{email})", inline=True)
@@ -36,7 +37,7 @@ def build_hod_embed(dept: dict) -> discord.Embed:
     embed = discord.Embed(
         title=hod['name'],
         description=f"**Head of Department** — {dept['name']}",
-        color=0x57f287,
+        color=Colors.GREEN,
     )
     embed.set_image(url=hod.get('image', ''))
     embed.add_field(name="Designation", value=hod.get('designation', 'N/A'), inline=True)
@@ -56,7 +57,7 @@ def build_teaching_embed(faculty: dict, dept: dict) -> discord.Embed:
     embed = discord.Embed(
         title=faculty['name'],
         description=f"**{faculty.get('designation', '')}** — {dept['name']}",
-        color=0x5865f2,
+        color=Colors.BLURPLE,
     )
     embed.set_image(url=details.get('image', faculty.get('thumbnail', '')))
     embed.add_field(name="Qualification", value=details.get('qualification', 'N/A'), inline=True)
@@ -80,7 +81,7 @@ def build_non_teaching_embed(staff: dict, dept: dict) -> discord.Embed:
     embed = discord.Embed(
         title=staff['name'],
         description=f"**{staff.get('designation', '')}** — {dept['name']}",
-        color=0x99aab5,
+        color=Colors.GREY,
     )
     embed.set_image(url=staff.get('image', ''))
     embed.add_field(name="Designation", value=staff.get('designation', 'N/A'), inline=True)
@@ -117,7 +118,7 @@ class FacultyView(ui.View):
         embed = discord.Embed(
             title=f"Teaching Faculty — {self.dept['name']}",
             description=f"Select a faculty member from the dropdown below.\n**{len(teaching)}** teaching faculty available.",
-            color=0x5865f2,
+            color=Colors.BLURPLE,
         )
         embed.set_thumbnail(url=self.dept.get('image', ''))
         await interaction.response.edit_message(embed=embed, view=view)
@@ -132,7 +133,7 @@ class FacultyView(ui.View):
         embed = discord.Embed(
             title=f"Non-Teaching Staff — {self.dept['name']}",
             description=f"Select a staff member from the dropdown below.\n**{len(non_teaching)}** non-teaching staff available.",
-            color=0x99aab5,
+            color=Colors.GREY,
         )
         embed.set_thumbnail(url=self.dept.get('image', ''))
         await interaction.response.edit_message(embed=embed, view=view)
@@ -166,7 +167,7 @@ class HODView(ui.View):
         embed = discord.Embed(
             title=f"Teaching Faculty — {self.dept['name']}",
             description=f"Select a faculty member from the dropdown below.\n**{len(teaching)}** teaching faculty available.",
-            color=0x5865f2,
+            color=Colors.BLURPLE,
         )
         embed.set_thumbnail(url=self.dept.get('image', ''))
         await interaction.response.edit_message(embed=embed, view=view)
@@ -181,7 +182,7 @@ class HODView(ui.View):
         embed = discord.Embed(
             title=f"Non-Teaching Staff — {self.dept['name']}",
             description=f"Select a staff member from the dropdown below.\n**{len(non_teaching)}** non-teaching staff available.",
-            color=0x99aab5,
+            color=Colors.GREY,
         )
         embed.set_thumbnail(url=self.dept.get('image', ''))
         await interaction.response.edit_message(embed=embed, view=view)
@@ -221,7 +222,7 @@ class FacultyDetailView(ui.View):
         embed = discord.Embed(
             title=f"Teaching Faculty — {self.dept['name']}",
             description=f"Select a faculty member from the dropdown below.\n**{len(teaching)}** teaching faculty available.",
-            color=0x5865f2,
+            color=Colors.BLURPLE,
         )
         embed.set_thumbnail(url=self.dept.get('image', ''))
         await interaction.response.edit_message(embed=embed, view=view)
@@ -236,7 +237,7 @@ class FacultyDetailView(ui.View):
         embed = discord.Embed(
             title=f"Non-Teaching Staff — {self.dept['name']}",
             description=f"Select a staff member from the dropdown below.\n**{len(non_teaching)}** non-teaching staff available.",
-            color=0x99aab5,
+            color=Colors.GREY,
         )
         embed.set_thumbnail(url=self.dept.get('image', ''))
         await interaction.response.edit_message(embed=embed, view=view)

@@ -1,7 +1,16 @@
 import discord
 from discord.ext import commands, tasks
 from utils.bot import BoBit
-from utils.consts import NASA_POD
+from utils.consts import (
+    NASA_POD,
+    ISS_API_URL,
+    ISS_TRACK_CHANNEL_ID,
+    ISS_TRACK_MESSAGE_ID,
+    YANDEX_STATIC_MAP_BASE,
+    NASA_LOGO_URL,
+    ISS_IMAGE_URL,
+    Colors,
+)
 from dotenv import load_dotenv
 import os
 
@@ -28,7 +37,7 @@ class Nasa(commands.Cog):
         embed = discord.Embed(
             title = data["title"],
             description = data["explanation"],
-            color = discord.Color.dark_blue(),
+            color = Colors.DARK_BLUE,
             url=data["url"]
         ).set_image(
             url = data["url"]
@@ -42,14 +51,14 @@ class Nasa(commands.Cog):
     @commands.command(name = "iss")
     async def iss(self, ctx: commands.Context):
         async with self.bot.session.get(
-                "https://api.wheretheiss.at/v1/satellites/25544"
+                ISS_API_URL
             ) as response:
                 json = await response.json()
         lat = json["latitude"]
         lon = json["longitude"]
         zoom = "3"
 
-        url = f"https://static-maps.yandex.ru/1.x/?z={zoom}&lang=en_US&ll={lon},{lat}&size=450,450&l=sat,trf,skl&pt={lon},{lat},vkbkm"
+        url = f"{YANDEX_STATIC_MAP_BASE}?z={zoom}&lang=en_US&ll={lon},{lat}&size=450,450&l=sat,trf,skl&pt={lon},{lat},vkbkm"
         em = (
             discord.Embed(
                 description="Current Location of the ISS",
@@ -66,10 +75,10 @@ class Nasa(commands.Cog):
             )
             .add_field(name="Visibility", value=json["visibility"], inline=False)
             .set_thumbnail(
-                url="https://www.nasa.gov/sites/default/files/thumbnails/image/nasa-logo-web-rgb.png"
+                url=NASA_LOGO_URL
             )
             .set_image(
-                url="http://www.nasa.gov/sites/default/files/thumbnails/image/final_configuration_of_iss.jpg"
+                url=ISS_IMAGE_URL
             )
             .set_image(url=url)
         )
@@ -78,17 +87,17 @@ class Nasa(commands.Cog):
 
     @tasks.loop(minutes=5)
     async def iss_loop(self):
-        channel = self.bot.get_channel(1525828633485119528)
-        message = await channel.fetch_message(1525830057732608041)
+        channel = self.bot.get_channel(ISS_TRACK_CHANNEL_ID)
+        message = await channel.fetch_message(ISS_TRACK_MESSAGE_ID)
         async with self.bot.session.get(
-                "https://api.wheretheiss.at/v1/satellites/25544"
+                ISS_API_URL
             ) as response:
                 json = await response.json()
         lat = json["latitude"]
         lon = json["longitude"]
         zoom = "3"
 
-        url = f"https://static-maps.yandex.ru/1.x/?z={zoom}&lang=en_US&ll={lon},{lat}&size=450,450&l=sat,trf,skl&pt={lon},{lat},vkbkm"
+        url = f"{YANDEX_STATIC_MAP_BASE}?z={zoom}&lang=en_US&ll={lon},{lat}&size=450,450&l=sat,trf,skl&pt={lon},{lat},vkbkm"
         em = (
             discord.Embed(
                 description="Current Location of the ISS",
@@ -105,10 +114,10 @@ class Nasa(commands.Cog):
             )
             .add_field(name="Visibility", value=json["visibility"], inline=False)
             .set_thumbnail(
-                url="https://www.nasa.gov/sites/default/files/thumbnails/image/nasa-logo-web-rgb.png"
+                url=NASA_LOGO_URL
             )
             .set_image(
-                url="http://www.nasa.gov/sites/default/files/thumbnails/image/final_configuration_of_iss.jpg"
+                url=ISS_IMAGE_URL
             )
             .set_image(url=url)
         )
@@ -118,7 +127,7 @@ class Nasa(commands.Cog):
     #  some errors, will fix later... 
     # @tasks.loop(hours=24)
     # async def pod(self):
-    #     thread = self.bot.get_channel(1525802023163789393)
+    #     thread = self.bot.get_channel(ISS_POD_THREAD_CHANNEL_ID)
     #     fetch_url = NASA_POD+f"?api_key={self.api_key}"
 
     #     response = await self.bot.session.get(fetch_url)
