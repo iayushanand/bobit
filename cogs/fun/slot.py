@@ -36,7 +36,7 @@ class SlotMachine(commands.Cog):
         # The chance of getting three of the same is:
         # Combination	Chance
         # 💎💎💎	0.0043% (≈ 1 in 23,149)
-        # ⭐⭐⭐	0.0232% (≈ 1 in 4,316)
+        # ⭐⭐⭐	 0.0232% (≈ 1 in 4,316)
         # 🔔🔔🔔	0.0675% (≈ 1 in 1,481)
         # 🍇🍇🍇	0.5397% (≈ 1 in 185)
         # 🍑🍑🍑	1.4817% (≈ 1 in 67) [six seven 👅]
