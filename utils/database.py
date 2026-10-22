@@ -20,6 +20,14 @@ class Database:
         self.afk = None
         self.tags = None
         self.stock = None
+        self.stock_stocks = None
+        self.stock_holdings = None
+        self.stock_trades = None
+        self.stock_prices = None
+        self.stock_activity = None
+        self.stock_balances = None
+        self.stock_watchlists = None
+        self.stock_alerts = None
 
     async def connect(self):
         if not self.client:
@@ -35,6 +43,14 @@ class Database:
             self.afk = db["afk"]
             self.tags = db["tags"]
             self.stock = db["stock"]
+            self.stock_stocks = db["stock_stocks"]
+            self.stock_holdings = db["stock_holdings"]
+            self.stock_trades = db["stock_trades"]
+            self.stock_prices = db["stock_prices"]
+            self.stock_activity = db["stock_activity"]
+            self.stock_balances = db["stock_balances"]
+            self.stock_watchlists = db["stock_watchlists"]
+            self.stock_alerts = db["stock_alerts"]
             log.success(f"Database Connected → {self.db_name}")
 
     async def close(self):

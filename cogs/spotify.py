@@ -1,4 +1,5 @@
 import discord
+import asyncio
 from discord.ext import commands
 from utils.bot import BoBit
 from utils.helper import Spotify, get_lyrics, find_surrounding_lyrics
@@ -56,7 +57,12 @@ class SpotifyShowcase(commands.Cog):
             duration = time.time()-spotify_activity.start.timestamp()
             song_title = spotify_activity.title
             song_artist = spotify_activity.artist
-            lyr = get_lyrics(song_title, song_artist)
+            # get_lyrics is sync (uses requests) -> run in thread so we
+            # don't block the bot and can retry on 503 ServerOverloaded
+            try:
+                lyr = await asyncio.to_thread(get_lyrics, song_title, song_artist)
+            except Exception:
+                lyr = None
             if not lyr:
                 return await ctx.send(f"Lyrics not found for song - {song_title} - {song_artist}")
             if lyr[1] == 1:

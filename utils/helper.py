@@ -13,7 +13,9 @@ from io import BytesIO
 from PIL import Image, ImageDraw, ImageFont, ImageOps, ImageEnhance
 from cbvx import iml
 from typing import Tuple
+import time as _time
 from lrclib import LrcLibAPI
+from lrclib.exceptions import ServerError, APIError
 from utils.consts import SPOTIFY_EMOJI, FONT_SPOTIFY_PATH, FONT_INTERBLACK_PATH
 
 class Spotify:
@@ -111,14 +113,49 @@ class Spotify:
         return (image, view)
 
 _lrclib_api = LrcLibAPI(
-    user_agent="Mozilla/5.0 (X11; Linux x86_64; rv:125.0) Gecko/20100101 Firefox/125.0"
+    user_agent="BoBit/1.0 (https://github.com/DBOT/BoBit; discord bot)"
 )
 
+
+def _call_with_retry(func, *args, max_retries: int = 3, **kwargs):
+    """Retry on 503 ServerOverloaded (respects Retry-After header)."""
+    last_exc = None
+    for attempt in range(max_retries):
+        try:
+            return func(*args, **kwargs)
+        except ServerError as exc:
+            last_exc = exc
+            retry_after = None
+            try:
+                retry_after = exc.response.headers.get("retry-after")  # type: ignore
+            except Exception:
+                pass
+            try:
+                delay = float(retry_after) if retry_after is not None else (1.0 * (2 ** attempt))
+            except ValueError:
+                delay = 1.0 * (2 ** attempt)
+            delay = min(delay, 5.0)
+            if attempt < max_retries - 1:
+                _time.sleep(delay)
+                continue
+            raise
+        except APIError:
+            raise
+    if last_exc:
+        raise last_exc
+
+
 def get_lyrics(name: str, artist: str) -> str:
-    results = _lrclib_api.search_lyrics(track_name=name, artist_name=artist)
+    try:
+        results = _call_with_retry(_lrclib_api.search_lyrics, track_name=name, artist_name=artist)
+    except (ServerError, APIError):
+        return None
 
     if len(results) != 0:
-        lyrics = _lrclib_api.get_lyrics_by_id(results[0].id)
+        try:
+            lyrics = _call_with_retry(_lrclib_api.get_lyrics_by_id, results[0].id)
+        except (ServerError, APIError):
+            return None
         if lyrics.synced_lyrics:
             return (lyrics.synced_lyrics, 1)
         elif lyrics.plain_lyrics:

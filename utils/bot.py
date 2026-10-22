@@ -46,7 +46,14 @@ class BoBit(commands.Bot):
                     path = os.path.join(root, file)
                     module = path[:-3].replace(os.sep, ".")
 
-                    await self.load_extension(module)
+                    try:
+                        await self.load_extension(module)
+                    except commands.NoEntryPointError:
+                        # Helper module (e.g. cogs.stock.pricing), not a cog.
+                        self.log.info(f"Skipped -> {module} (no setup)")
+                        continue
+                    except commands.ExtensionAlreadyLoaded:
+                        continue
                     self.log.info(f"Loaded -> {module}")
 
     async def on_ready(self):
