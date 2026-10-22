@@ -234,7 +234,7 @@ class Stock(commands.Cog):
                                            color=Colors.DARK_EMBED))
 
     # -- trading --
-    @stock.command(name="buy", aliases=["b", "purchase"])
+    @stock.command(name="buy", aliases=["b", "purchase", "pump"])
     @commands.cooldown(1, 5, commands.BucketType.user)
     async def stock_buy(self, ctx: commands.Context, ticker: str, quantity: int) -> None:
         try:

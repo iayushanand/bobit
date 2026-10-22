@@ -57,7 +57,7 @@ class StockConfig:
     starting_balance_minor: int = 10_000_000
     initial_price_minor: int = 10_000
     total_supply: int = 10_000
-    creator_allocation: int = 1_000
+    creator_allocation: int = 0
     creation_fee_minor: int = 0
     max_stocks_per_member: int = 1
 
