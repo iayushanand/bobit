@@ -296,7 +296,7 @@ class Stock(commands.Cog):
                                            description=format_cash(bal, self.config),
                                            color=Colors.DARK_EMBED))
 
-    @stock.command(name="history", aliases=["hist", "log", "h"])
+    @stock.command(name="history", aliases=["hist", "log"])
     async def stock_history(self, ctx: commands.Context, ticker: str, limit: int = 10) -> None:
         try:
             doc = await self.service.require_stock(None, ticker)
