@@ -272,16 +272,21 @@ class Stock(commands.Cog):
                           color=Colors.DARK_EMBED)
         e.add_field(name="Cash", value=format_cash(data["balance"], self.config))
         e.add_field(name="Holdings", value=format_cash(data["holdings_value"], self.config))
-        await ctx.send(embed=e)
+        chart_file = None
         if CHARTS_AVAILABLE and len(data["positions"]) > 1:
             try:
                 alloc = allocation(data["positions"])
                 buf = await asyncio.to_thread(
                     allocation_chart, [a["ticker"] for a in alloc], [a["value"] for a in alloc],
                     f"{target.display_name} allocation")
-                await ctx.send(file=discord.File(buf, filename="allocation.png"))
+                chart_file = discord.File(buf, filename="allocation.png")
+                e.set_image(url="attachment://allocation.png")
             except Exception:
-                pass
+                chart_file = None
+        if chart_file:
+            await ctx.send(embed=e, file=chart_file)
+        else:
+            await ctx.send(embed=e)
 
     @stock.command(name="balance")
     async def stock_balance(self, ctx: commands.Context, member: discord.Member | None = None) -> None:

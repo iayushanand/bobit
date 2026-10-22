@@ -26,7 +26,7 @@ def use_candles(n_points: int) -> bool:
 
 def _save(fig) -> io.BytesIO:
     buf = io.BytesIO()
-    fig.savefig(buf, format="png", bbox_inches="tight")
+    fig.savefig(buf, format="png", bbox_inches="tight", facecolor=fig.get_facecolor(), edgecolor="none", dpi=180)
     plt.close(fig)
     buf.seek(0)
     return buf
@@ -177,14 +177,44 @@ def _line_axes(fig, timestamps: list[float], prices_minor: list[float],
 
 
 def allocation_chart(labels: list[str], values: list[float], title: str = "Portfolio") -> io.BytesIO:
-    """Pie chart of portfolio allocation."""
-    fig, ax = plt.subplots(figsize=(6, 4))
-    ax.set_title(title)
-    if not values or sum(values) <= 0:
-        ax.text(0.5, 0.5, "no holdings", ha="center", transform=ax.transAxes)
-    else:
-        ax.pie(values, labels=labels, autopct="%1.1f%%")
-    return _save(fig)
+    """Dark-mode donut chart for portfolio allocation — beautiful on Discord."""
+    # vibrant but harmonious palette that pops on CHART_BG
+    PALETTE = ["#00E5A0", "#38BDF8", "#FB7185", "#FACC15", "#A78BFA", "#2DD4BF", "#FB923C", "#4ADE80", "#F472B6", "#60A5FA"]
+
+    with plt.style.context("dark_background"):
+        fig, ax = plt.subplots(figsize=(6.4, 4.2), facecolor=CHART_BG)
+        ax.set_facecolor(CHART_BG)
+        ax.set_title(title, color="white", fontsize=13, weight=600, pad=18, fontfamily="sans-serif")
+
+        if not values or sum(values) <= 0:
+            ax.text(0.5, 0.5, "no holdings", ha="center", va="center", transform=ax.transAxes, color="#9CA3AF", fontsize=11)
+            ax.axis("off")
+            return _save(fig)
+
+        colors = [PALETTE[i % len(PALETTE)] for i in range(len(values))]
+        wedges, texts, autotexts = ax.pie(
+            values,
+            labels=labels,
+            autopct="%1.1f%%",
+            startangle=140,
+            colors=colors,
+            pctdistance=0.82,
+            wedgeprops=dict(width=0.46, edgecolor=CHART_BG, linewidth=2.8),
+            textprops=dict(color="#E5E7EB", fontsize=9.2),
+        )
+        for t in texts:
+            t.set_fontsize(9.2)
+            t.set_color("#E5E7EB")
+        for at in autotexts:
+            at.set_color("white")
+            at.set_fontsize(8.6)
+            at.set_weight(700)
+            at.set_path_effects([])
+
+        ax.axis("equal")
+        # subtle center label
+        ax.text(0, 0, f"{len(values)}\nassets", ha="center", va="center", color="#9CA3AF", fontsize=8, linespacing=1.1, weight=600)
+        return _save(fig)
 
 
 def movers_chart(labels: list[str], changes_pct: list[float], title: str = "Movers %") -> io.BytesIO:
