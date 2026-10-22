@@ -236,9 +236,50 @@ class Stock(commands.Cog):
     # -- trading --
     @stock.command(name="buy", aliases=["b", "purchase", "pump"])
     @commands.cooldown(1, 5, commands.BucketType.user)
-    async def stock_buy(self, ctx: commands.Context, ticker: str, quantity: int) -> None:
+    async def stock_buy(self, ctx: commands.Context, ticker: str, quantity: str) -> None:
+        # support "all" / "max" to buy as many as possible with current balance
+        qty: int
+        if isinstance(quantity, str) and quantity.lower() in ("all", "max", "a"):
+            try:
+                doc = await self.service.require_stock(None, ticker)
+            except StockError as exc:
+                await ctx.send(embed=_err_embed(str(exc)))
+                return
+            price = int(doc["current_price"])
+            available = int(doc.get("available_shares", 0))
+            balance = await self.service.balance_of(None, ctx.author.id)
+            # binary search max affordable (gross+fee <= balance)
+            from cogs.stock.pricing import quote_trade
+            lo, hi = 0, available
+            best = 0
+            while lo <= hi:
+                mid = (lo + hi) // 2
+                if mid == 0:
+                    best = 0
+                    lo = 1
+                    continue
+                try:
+                    q = quote_trade(mid, price, self.config.trading_fee_rate, True)
+                except ValueError:
+                    hi = mid - 1
+                    continue
+                if q.total_minor <= balance:
+                    best = mid
+                    lo = mid + 1
+                else:
+                    hi = mid - 1
+            qty = best
+            if qty <= 0:
+                await ctx.send(embed=_err_embed("Insufficient funds to buy any shares."))
+                return
+        else:
+            try:
+                qty = int(float(str(quantity).replace(",", "")))
+            except Exception:
+                await ctx.send(embed=_err_embed("Invalid quantity. Use a number or `all`."))
+                return
         try:
-            receipt = await self.service.buy(None, ctx.author.id, ticker, int(quantity))
+            receipt = await self.service.buy(None, ctx.author.id, ticker, qty)
         except (StockError, ValueError) as exc:
             await ctx.send(embed=_err_embed(str(exc)))
             return
@@ -249,9 +290,27 @@ class Stock(commands.Cog):
 
     @stock.command(name="sell", aliases=["s", "dump"])
     @commands.cooldown(1, 5, commands.BucketType.user)
-    async def stock_sell(self, ctx: commands.Context, ticker: str, quantity: int) -> None:
+    async def stock_sell(self, ctx: commands.Context, ticker: str, quantity: str) -> None:
+        if isinstance(quantity, str) and quantity.lower() in ("all", "max", "a"):
+            try:
+                doc = await self.service.require_stock(None, ticker)
+            except StockError as exc:
+                await ctx.send(embed=_err_embed(str(exc)))
+                return
+            stock_id = str(doc["_id"])
+            holding = await self.repo.get_holding(None, ctx.author.id, stock_id)
+            qty = int(holding) if holding else 0
+            if qty <= 0:
+                await ctx.send(embed=_err_embed("You don't hold any shares of that stock."))
+                return
+        else:
+            try:
+                qty = int(float(str(quantity).replace(",", "")))
+            except Exception:
+                await ctx.send(embed=_err_embed("Invalid quantity. Use a number or `all`."))
+                return
         try:
-            receipt = await self.service.sell(None, ctx.author.id, ticker, int(quantity))
+            receipt = await self.service.sell(None, ctx.author.id, ticker, qty)
         except (StockError, ValueError) as exc:
             await ctx.send(embed=_err_embed(str(exc)))
             return
