@@ -396,7 +396,7 @@ class Stock(commands.Cog):
             await ctx.send(embed=_err_embed("Amount must be positive."))
             return
         # hard cap on transfers (prevent funneling exploit profits to alts)
-        max_pay = 5_000_00  # ₹5,000 per transfer
+        max_pay = 50_000_00  # ₹10,000 per transfer
         if amount_minor > max_pay:
             await ctx.send(embed=_err_embed(f"Max transfer is {format_cash(max_pay, self.config)} per command (anti-funnel)."))
             return
