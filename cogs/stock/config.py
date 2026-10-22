@@ -54,7 +54,7 @@ class StockConfig:
     currency_precision: int = 2
     currency_symbol: str = "₹"
 
-    starting_balance_minor: int = 1_000_000
+    starting_balance_minor: int = 10_000_000
     initial_price_minor: int = 10_000
     total_supply: int = 10_000
     creator_allocation: int = 1_000

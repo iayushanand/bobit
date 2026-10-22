@@ -74,6 +74,14 @@ class Stock(commands.Cog):
         if not self.market_loop.is_running():
             self.market_loop.start()
 
+    async def cog_before_invoke(self, ctx: commands.Context) -> None:
+        # ensure caller has a stock account (100k starting balance) for any stock command
+        if ctx.command and ctx.command.qualified_name.startswith("stock"):
+            try:
+                await self.service.balance_of(None, ctx.author.id)
+            except Exception:
+                pass
+
     async def cog_unload(self) -> None:
         if self.market_loop.is_running():
             self.market_loop.cancel()

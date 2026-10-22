@@ -9,6 +9,7 @@ from utils.consts import (
     YANDEX_STATIC_MAP_BASE,
     NASA_LOGO_URL,
     ISS_IMAGE_URL,
+    ISS_POD_THREAD_CHANNEL_ID,
     Colors,
 )
 from dotenv import load_dotenv
@@ -125,27 +126,27 @@ class Nasa(commands.Cog):
 
 
     #  some errors, will fix later... 
-    # @tasks.loop(hours=24)
-    # async def pod(self):
-    #     thread = self.bot.get_channel(ISS_POD_THREAD_CHANNEL_ID)
-    #     fetch_url = NASA_POD+f"?api_key={self.api_key}"
+    @tasks.loop(hours=24)
+    async def pod(self):
+        thread = self.bot.get_channel(ISS_POD_THREAD_CHANNEL_ID)
+        fetch_url = NASA_POD+f"?api_key={self.api_key}"
 
-    #     response = await self.bot.session.get(fetch_url)
-    #     data = await response.json()
-    #     print(data)
+        response = await self.bot.session.get(fetch_url)
+        data = await response.json()
+        print(data)
 
-    #     embed = discord.Embed(
-    #         title = data["title"],
-    #         description = data["explanation"],
-    #         color = discord.Color.dark_blue(),
-    #         url=data["url"]
-    #     ).set_image(
-    #         url = data["url"]
-    #     ).set_footer(
-    #         text=data["date"]
-    #     )
+        embed = discord.Embed(
+            title = data["title"],
+            description = data["explanation"],
+            color = discord.Color.dark_blue(),
+            url=data["url"]
+        ).set_image(
+            url = data["url"]
+        ).set_footer(
+            text=data["date"]
+        )
 
-    #     await thread.send(embed = embed)
+        await thread.send(embed = embed)
 
 async def setup(bot: BoBit):
     await bot.add_cog(Nasa(bot))
