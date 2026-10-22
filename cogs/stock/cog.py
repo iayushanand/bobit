@@ -363,25 +363,28 @@ class Stock(commands.Cog):
 
         stock_id: str | None = None
         resolved_ticker: str | None = None
+        resolved_name: str | None = None
         if ticker_str:
             try:
                 doc = await self.service.require_stock(None, ticker_str)
                 stock_id = str(doc["_id"])
                 resolved_ticker = doc["ticker"]
+                resolved_name = doc.get("name", "")
             except StockError as exc:
                 await ctx.send(embed=_err_embed(str(exc)))
                 return
 
         trades = await self.repo.list_trades(None, stock_id, target.id, 20)
-        # enrich ticker if we queried without ticker filter (need stock lookup for display)
-        if not resolved_ticker:
-            # try to show ticker per trade via lookup (best effort, last 15)
-            pass
 
         if not trades:
-            title = f"{target.display_name}'s trade log" + (f" — {resolved_ticker}" if resolved_ticker else "")
+            title = f"{target.display_name}'s trade log" + (f" — {resolved_ticker} — {resolved_name}" if resolved_ticker else "")
             await ctx.send(embed=discord.Embed(title=title, description="No trades yet.", color=Colors.DARK_EMBED))
             return
+
+        # cache stock docs for name lookup when showing multiple tickers
+        stock_cache: dict[str, dict] = {}
+        if resolved_ticker and resolved_name is not None:
+            stock_cache[stock_id or ""] = {"ticker": resolved_ticker, "name": resolved_name}
 
         lines: list[str] = []
         for t in trades[:15]:
@@ -389,12 +392,30 @@ class Stock(commands.Cog):
             side = str(t.get("side", "buy")).upper()
             qty = t.get("quantity", 0)
             price = int(t.get("price", 0)) if t.get("price") is not None else 0
-            # prefer stored ticker, else resolved, else stock_id short
-            label = resolved_ticker or t.get("ticker") or str(t.get("stock_id", ""))[:6]
             price_str = format_cash(price, self.config) if price else ""
+            sid = str(t.get("stock_id", ""))
+            # resolve ticker + name
+            if sid in stock_cache:
+                info = stock_cache[sid]
+            elif resolved_ticker:
+                info = {"ticker": resolved_ticker, "name": resolved_name or ""}
+            else:
+                # lookup stock for name (cached)
+                doc2 = stock_cache.get(sid)
+                if doc2 is None:
+                    try:
+                        doc2 = await self.repo.find_stock_by_id(sid)
+                    except Exception:
+                        doc2 = None
+                    if doc2:
+                        stock_cache[sid] = doc2
+                info = doc2 or {"ticker": t.get("ticker") or sid[:6], "name": ""}  # type: ignore
+            ticker_label = info.get("ticker") or sid[:6]
+            name_label = info.get("name") or ""
+            label = f"{ticker_label} — {name_label}" if name_label else ticker_label
             lines.append(f"<t:{ts}:R> **{side}** {label} ×{qty} @ {price_str}")
 
-        title = f"{target.display_name}'s trade log" + (f" — {resolved_ticker}" if resolved_ticker else "")
+        title = f"{target.display_name}'s trade log" + (f" — {resolved_ticker} — {resolved_name}" if resolved_ticker else "")
         e = discord.Embed(title=title, description="\n".join(lines), color=Colors.DARK_EMBED)
         e.set_footer(text=f"Showing {len(lines)} of {len(trades)} • .stock tradelog [TICKER] [@user]")
         await ctx.send(embed=e)
