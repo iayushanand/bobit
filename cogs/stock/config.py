@@ -33,7 +33,7 @@ class StockConfig:
 
     owner_activity_target: int = 10
     holder_activity_target: int = 20
-    holder_per_member_cap: int = 2
+    holder_per_member_cap: int = 5
 
     owner_max_return: float = 0.001
     holder_max_return: float = 0.0004
@@ -45,7 +45,7 @@ class StockConfig:
     max_scheduled_move: float = 0.01
     trade_sensitivity: float = 0.10
     minimum_liquidity_minor: int = 100_000
-    max_trade_move: float = 0.05
+    max_trade_move: float = 0.02
 
     min_price_minor: int = 100
     max_price_minor: int = 100_000_000
