@@ -61,6 +61,11 @@ class StockConfig:
     creation_fee_minor: int = 0
     max_stocks_per_member: int = 1
 
+    # --- exploit mitigations ---
+    max_trade_quantity: int = 500
+    min_hold_seconds: int = 30
+    max_position_shares: int = 2000
+
     excluded_channel_ids: tuple = field(default_factory=tuple)
     command_prefixes: tuple = field(default_factory=lambda: (".",))
 
@@ -111,6 +116,12 @@ class StockConfig:
             raise ValueError("creation_fee_minor cannot be negative")
         if self.max_stocks_per_member < 1:
             raise ValueError("max_stocks_per_member must be >= 1")
+        if self.max_trade_quantity < 1 or self.max_trade_quantity > self.total_supply:
+            raise ValueError("max_trade_quantity must be within [1, total_supply]")
+        if self.min_hold_seconds < 0:
+            raise ValueError("min_hold_seconds cannot be negative")
+        if self.max_position_shares < 1 or self.max_position_shares > self.total_supply:
+            raise ValueError("max_position_shares must be within [1, total_supply]")
 
 
 DEFAULT_CONFIG = StockConfig()

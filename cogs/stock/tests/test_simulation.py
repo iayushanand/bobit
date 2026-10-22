@@ -68,7 +68,7 @@ class TestSimulation(unittest.TestCase):
 
     def test_spam_capped_and_wash_neutral(self):
         import asyncio
-        cfg = StockConfig()
+        cfg = StockConfig(min_hold_seconds=0)
 
         async def go():
             repo = InMemoryRepository()
@@ -88,9 +88,9 @@ class TestSimulation(unittest.TestCase):
             end = (await svc.require_stock(1, "SPAM"))["current_price"]
             # spam for a day must not pump more than ~2%
             self.assertLess((end - start) / start, 0.02 + 0.01)
-            await svc.buy(1, 202, "SPAM", 5)
+            await svc.buy(1, 202, "SPAM", 50)
             mid = (await svc.require_stock(1, "SPAM"))["current_price"]
-            await svc.sell(1, 202, "SPAM", 5)
+            await svc.sell(1, 202, "SPAM", 50)
             final = (await svc.require_stock(1, "SPAM"))["current_price"]
             self.assertGreater(mid, end)  # buy pushes up
             self.assertLess(final, mid)  # sell pushes down

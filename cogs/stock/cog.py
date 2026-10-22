@@ -237,7 +237,7 @@ class Stock(commands.Cog):
     @stock.command(name="buy", aliases=["b", "purchase", "pump"])
     @commands.cooldown(1, 5, commands.BucketType.user)
     async def stock_buy(self, ctx: commands.Context, ticker: str, quantity: str) -> None:
-        # support "all" / "max" to buy as many as possible with current balance
+        # support "all" / "max" to buy as many as possible with current balance (capped)
         qty: int
         if isinstance(quantity, str) and quantity.lower() in ("all", "max", "a"):
             try:
@@ -248,9 +248,11 @@ class Stock(commands.Cog):
             price = int(doc["current_price"])
             available = int(doc.get("available_shares", 0))
             balance = await self.service.balance_of(None, ctx.author.id)
-            # binary search max affordable (gross+fee <= balance)
+            # hard-cap for buys: respect max_trade_quantity
+            hi_cap = min(available, self.config.max_trade_quantity)
+            # binary search max affordable (gross+fee <= balance) within cap
             from cogs.stock.pricing import quote_trade
-            lo, hi = 0, available
+            lo, hi = 0, hi_cap
             best = 0
             while lo <= hi:
                 mid = (lo + hi) // 2
@@ -272,11 +274,21 @@ class Stock(commands.Cog):
             if qty <= 0:
                 await ctx.send(embed=_err_embed("Insufficient funds to buy any shares."))
                 return
+            if hi_cap == self.config.max_trade_quantity and best == hi_cap and available > hi_cap:
+                await ctx.send(embed=discord.Embed(title="Capped", description=f"`all` capped to hard cap {self.config.max_trade_quantity:,} shares per trade. Run again for more.", color=Colors.GOLD))
         else:
+            # strict integer parsing — reject floats, scientific, negatives
+            cleaned = str(quantity).replace(",", "").strip()
+            if not cleaned.isdigit():
+                await ctx.send(embed=_err_embed("Invalid quantity. Use a whole number or `all` (no decimals)."))
+                return
             try:
-                qty = int(float(str(quantity).replace(",", "")))
+                qty = int(cleaned)
             except Exception:
                 await ctx.send(embed=_err_embed("Invalid quantity. Use a number or `all`."))
+                return
+            if qty > self.config.max_trade_quantity:
+                await ctx.send(embed=_err_embed(f"Hard cap: max {self.config.max_trade_quantity:,} shares per trade."))
                 return
         try:
             receipt = await self.service.buy(None, ctx.author.id, ticker, qty)
@@ -303,11 +315,22 @@ class Stock(commands.Cog):
             if qty <= 0:
                 await ctx.send(embed=_err_embed("You don't hold any shares of that stock."))
                 return
+            # hard-cap sell-all to max_trade_quantity to prevent instant dump exploit
+            if qty > self.config.max_trade_quantity:
+                qty = self.config.max_trade_quantity
+                await ctx.send(embed=discord.Embed(title="Capped", description=f"`all` capped to hard cap {self.config.max_trade_quantity:,} shares per trade. Run again to sell more.", color=Colors.GOLD))
         else:
+            cleaned = str(quantity).replace(",", "").strip()
+            if not cleaned.isdigit():
+                await ctx.send(embed=_err_embed("Invalid quantity. Use a whole number or `all` (no decimals)."))
+                return
             try:
-                qty = int(float(str(quantity).replace(",", "")))
+                qty = int(cleaned)
             except Exception:
                 await ctx.send(embed=_err_embed("Invalid quantity. Use a number or `all`."))
+                return
+            if qty > self.config.max_trade_quantity:
+                await ctx.send(embed=_err_embed(f"Hard cap: max {self.config.max_trade_quantity:,} shares per trade."))
                 return
         try:
             receipt = await self.service.sell(None, ctx.author.id, ticker, qty)
@@ -356,7 +379,7 @@ class Stock(commands.Cog):
                                            color=Colors.DARK_EMBED))
 
     @stock.command(name="pay", aliases=["give", "send", "transfer", "tip"])
-    @commands.cooldown(1, 5, commands.BucketType.user)
+    @commands.cooldown(1, 10, commands.BucketType.user)
     async def stock_pay(self, ctx: commands.Context, member: discord.Member, amount: float) -> None:
         if member.bot:
             await ctx.send(embed=_err_embed("You cannot pay a bot."))
@@ -371,6 +394,14 @@ class Stock(commands.Cog):
             return
         if amount_minor <= 0:
             await ctx.send(embed=_err_embed("Amount must be positive."))
+            return
+        # hard cap on transfers (prevent funneling exploit profits to alts)
+        max_pay = 5_000_00  # ₹5,000 per transfer
+        if amount_minor > max_pay:
+            await ctx.send(embed=_err_embed(f"Max transfer is {format_cash(max_pay, self.config)} per command (anti-funnel)."))
+            return
+        if amount_minor > 1_000_000_00:
+            await ctx.send(embed=_err_embed("Amount too large."))
             return
         giver_bal = await self.service.balance_of(None, ctx.author.id)
         if giver_bal < amount_minor:

@@ -5,6 +5,7 @@ backwards compatibility but are ignored – all operations are global. Callers
 may omit ``guild_id`` or pass ``None``/``0``.
 """
 
+import asyncio
 import time
 
 from .config import StockConfig, DEFAULT_CONFIG
@@ -47,6 +48,23 @@ class StockService:
     def __init__(self, repo, config: StockConfig = DEFAULT_CONFIG) -> None:
         self.repo = repo
         self.config = config
+        self._locks: dict[str, asyncio.Lock] = {}
+        self._last_buy_ts: dict[str, float] = {}  # key = f"{user_id}:{stock_id}"
+
+    def _lock_for(self, stock_id: str) -> asyncio.Lock:
+        if stock_id not in self._locks:
+            self._locks[stock_id] = asyncio.Lock()
+        return self._locks[stock_id]
+
+    def _check_hard_cap(self, quantity: int) -> None:
+        if quantity > self.config.max_trade_quantity:
+            raise LimitError(f"Hard cap: max {self.config.max_trade_quantity:,} shares per trade (you tried {quantity:,}).")
+        validate_quantity(quantity, self.config.max_trade_quantity)
+
+    def _check_position_cap(self, current_holding: int, delta: int) -> None:
+        new_qty = current_holding + delta
+        if new_qty > self.config.max_position_shares:
+            raise LimitError(f"Position cap: max {self.config.max_position_shares:,} shares per stock (you would hold {new_qty:,}).")
 
     # -- balances -- global per user
     async def balance_of(self, guild_id: int | None = None, user_id: int | None = None, *args, **kwargs) -> int:
@@ -67,22 +85,6 @@ class StockService:
     # -- create --
     async def create_stock(self, guild_id: int | None = None, owner_id: int | None = None, ticker: str | None = None,
                            name: str | None = None, description: str | None = None, *args, **kwargs) -> dict:
-        # handle create_stock(owner_id, ticker, name) vs create_stock(guild_id, owner_id, ticker, name)
-        if name is None and ticker is not None and isinstance(ticker, str) and owner_id is not None and isinstance(owner_id, int):
-            # need to detect overload: if called with 3 args (owner_id, ticker, name)
-            # then guild_id is owner_id, owner_id is ticker, ticker is name
-            if isinstance(owner_id, str):
-                # shouldn't happen
-                pass
-        # If ticker looks like name and owner_id is ticker string, shift
-        # Detect when guild_id is actually owner_id and we have 4 positional args without guild
-        # Most reliable: if ticker is not None and name is not None but owner_id is string -> shift
-        if isinstance(owner_id, str) and ticker is not None and name is None:
-            # create_stock(ticker, name) style – not used
-            pass
-        # If called as create_stock(owner_id, ticker, name, description) without guild_id:
-        # Then guild_id = owner_id, owner_id = ticker (str), ticker = name (str) ...
-        # Detect by checking if owner_id is string (ticker)
         if isinstance(owner_id, str):
             description = name  # type: ignore
             name = ticker  # type: ignore
@@ -167,46 +169,55 @@ class StockService:
                     user_id = kwargs.get("user_id")
         if guild_id is None:
             guild_id = 0
-        quantity = validate_quantity(quantity)  # type: ignore
+        quantity = validate_quantity(quantity, self.config.max_trade_quantity)  # type: ignore
+        self._check_hard_cap(quantity)
         stock = await self.require_stock(guild_id, ticker)  # type: ignore
         self._require_tradable(stock)
         stock_id = _stock_id(stock)
-        price = int(stock["current_price"])
-        if int(stock.get("available_shares", 0)) < quantity:
-            raise NoSupplyError("Not enough shares available in the offering pool.")
-        quote = quote_trade(quantity, price, self.config.trading_fee_rate, True)
-        balance = await self.balance_of(guild_id, user_id)
-        if balance < quote.total_minor:
-            raise InsufficientFundsError("Insufficient funds for this purchase.")
-        liquidity = liquidity_for(price, int(stock.get("available_shares", 0)),
-                                  self.config.minimum_liquidity_minor)
-        impact = trade_impact_return(quote.gross_minor, liquidity, self.config.trade_sensitivity,
-                                     self.config.minimum_liquidity_minor, self.config.max_trade_move)
-        new_price = apply_return_to_price(price, impact, self.config.min_price_minor,
-                                          self.config.max_price_minor)
-        now = time.time()
-        await self.repo.set_balance(guild_id, user_id, balance - quote.total_minor)
-        await self.repo.adjust_holding(guild_id, user_id, stock_id, quantity)
-        await self.repo.update_stock(stock_id, {
-            "current_price": new_price,
-            "available_shares": int(stock.get("available_shares", 0)) - quantity,
-            "liquidity": liquidity_for(new_price, int(stock.get("available_shares", 0)) - quantity,
-                                       self.config.minimum_liquidity_minor),
-            "last_price_update_at": now,
-        })
-        await self.repo.insert_trade({
-            "stock_id": stock_id, "guild_id": 0, "user_id": user_id,
-            "side": "buy", "quantity": quantity, "price": price,
-            "gross": quote.gross_minor, "fee": quote.fee_minor,
-            "total": quote.total_minor, "ts": now,
-        })
-        await self.repo.insert_price_event({
-            "stock_id": stock_id, "guild_id": 0, "ts": now,
-            "price": new_price, "reason": "trade_buy",
-            "components": {"trade": impact}, "return": impact,
-        })
-        return TradeReceipt(ticker, quantity, price, quote.gross_minor,  # type: ignore
-                            quote.fee_minor, quote.total_minor, new_price, True)
+        pre_holding = await self.repo.get_holding(guild_id, user_id, stock_id)
+        self._check_position_cap(pre_holding, quantity)
+        async with self._lock_for(stock_id):
+            stock = await self.require_stock(guild_id, ticker)  # type: ignore
+            self._require_tradable(stock)
+            price = int(stock["current_price"])
+            if int(stock.get("available_shares", 0)) < quantity:
+                raise NoSupplyError("Not enough shares available in the offering pool.")
+            holding_now = await self.repo.get_holding(guild_id, user_id, stock_id)
+            self._check_position_cap(holding_now, quantity)
+            quote = quote_trade(quantity, price, self.config.trading_fee_rate, True)
+            balance = await self.balance_of(guild_id, user_id)
+            if balance < quote.total_minor:
+                raise InsufficientFundsError("Insufficient funds for this purchase.")
+            liquidity = liquidity_for(price, int(stock.get("available_shares", 0)),
+                                       self.config.minimum_liquidity_minor)
+            impact = trade_impact_return(quote.gross_minor, liquidity, self.config.trade_sensitivity,
+                                         self.config.minimum_liquidity_minor, self.config.max_trade_move)
+            new_price = apply_return_to_price(price, impact, self.config.min_price_minor,
+                                              self.config.max_price_minor)
+            now = time.time()
+            await self.repo.set_balance(guild_id, user_id, balance - quote.total_minor)
+            await self.repo.adjust_holding(guild_id, user_id, stock_id, quantity)
+            await self.repo.update_stock(stock_id, {
+                "current_price": new_price,
+                "available_shares": int(stock.get("available_shares", 0)) - quantity,
+                "liquidity": liquidity_for(new_price, int(stock.get("available_shares", 0)) - quantity,
+                                           self.config.minimum_liquidity_minor),
+                "last_price_update_at": now,
+            })
+            await self.repo.insert_trade({
+                "stock_id": stock_id, "guild_id": 0, "user_id": user_id,
+                "side": "buy", "quantity": quantity, "price": price,
+                "gross": quote.gross_minor, "fee": quote.fee_minor,
+                "total": quote.total_minor, "ts": now,
+            })
+            await self.repo.insert_price_event({
+                "stock_id": stock_id, "guild_id": 0, "ts": now,
+                "price": new_price, "reason": "trade_buy",
+                "components": {"trade": impact}, "return": impact,
+            })
+            self._last_buy_ts[f"{user_id}:{stock_id}"] = now
+            return TradeReceipt(ticker, quantity, price, quote.gross_minor,  # type: ignore
+                                quote.fee_minor, quote.total_minor, new_price, True)
 
     async def sell(self, guild_id: int | None = None, user_id: int | None = None, ticker: str | None = None, quantity: int | None = None, *args, **kwargs) -> TradeReceipt:
         if quantity is None:
@@ -223,45 +234,55 @@ class StockService:
                     user_id = kwargs.get("user_id")
         if guild_id is None:
             guild_id = 0
-        quantity = validate_quantity(quantity)  # type: ignore
+        quantity = validate_quantity(quantity, self.config.max_trade_quantity)  # type: ignore
+        self._check_hard_cap(quantity)
         stock = await self.require_stock(guild_id, ticker)  # type: ignore
         self._require_tradable(stock)
         stock_id = _stock_id(stock)
-        price = int(stock["current_price"])
-        holding = await self.repo.get_holding(guild_id, user_id, stock_id)
-        if holding < quantity:
-            raise InsufficientSharesError("You do not own that many shares.")
-        quote = quote_trade(quantity, price, self.config.trading_fee_rate, False)
-        liquidity = liquidity_for(price, int(stock.get("available_shares", 0)),
-                                  self.config.minimum_liquidity_minor)
-        impact = trade_impact_return(-quote.gross_minor, liquidity, self.config.trade_sensitivity,
-                                     self.config.minimum_liquidity_minor, self.config.max_trade_move)
-        new_price = apply_return_to_price(price, impact, self.config.min_price_minor,
-                                          self.config.max_price_minor)
-        now = time.time()
-        balance = await self.balance_of(guild_id, user_id)
-        await self.repo.set_balance(guild_id, user_id, balance + quote.total_minor)
-        await self.repo.adjust_holding(guild_id, user_id, stock_id, -quantity)
-        await self.repo.update_stock(stock_id, {
-            "current_price": new_price,
-            "available_shares": int(stock.get("available_shares", 0)) + quantity,
-            "liquidity": liquidity_for(new_price, int(stock.get("available_shares", 0)) + quantity,
-                                       self.config.minimum_liquidity_minor),
-            "last_price_update_at": now,
-        })
-        await self.repo.insert_trade({
-            "stock_id": stock_id, "guild_id": 0, "user_id": user_id,
-            "side": "sell", "quantity": quantity, "price": price,
-            "gross": quote.gross_minor, "fee": quote.fee_minor,
-            "total": quote.total_minor, "ts": now,
-        })
-        await self.repo.insert_price_event({
-            "stock_id": stock_id, "guild_id": 0, "ts": now,
-            "price": new_price, "reason": "trade_sell",
-            "components": {"trade": impact}, "return": impact,
-        })
-        return TradeReceipt(ticker, quantity, price, quote.gross_minor,  # type: ignore
-                            quote.fee_minor, quote.total_minor, new_price, False)
+        # min-hold enforcement: prevent instant flip
+        last_buy = self._last_buy_ts.get(f"{user_id}:{stock_id}")
+        if last_buy is not None and self.config.min_hold_seconds > 0:
+            elapsed = time.time() - last_buy
+            if elapsed < self.config.min_hold_seconds:
+                raise LimitError(f"Hold period: wait {self.config.min_hold_seconds - int(elapsed)}s before selling `{stock['ticker']}` (anti-flip).")
+        async with self._lock_for(stock_id):
+            stock = await self.require_stock(guild_id, ticker)  # type: ignore
+            self._require_tradable(stock)
+            price = int(stock["current_price"])
+            holding = await self.repo.get_holding(guild_id, user_id, stock_id)
+            if holding < quantity:
+                raise InsufficientSharesError("You do not own that many shares.")
+            quote = quote_trade(quantity, price, self.config.trading_fee_rate, False)
+            liquidity = liquidity_for(price, int(stock.get("available_shares", 0)),
+                                       self.config.minimum_liquidity_minor)
+            impact = trade_impact_return(-quote.gross_minor, liquidity, self.config.trade_sensitivity,
+                                         self.config.minimum_liquidity_minor, self.config.max_trade_move)
+            new_price = apply_return_to_price(price, impact, self.config.min_price_minor,
+                                              self.config.max_price_minor)
+            now = time.time()
+            balance = await self.balance_of(guild_id, user_id)
+            await self.repo.set_balance(guild_id, user_id, balance + quote.total_minor)
+            await self.repo.adjust_holding(guild_id, user_id, stock_id, -quantity)
+            await self.repo.update_stock(stock_id, {
+                "current_price": new_price,
+                "available_shares": int(stock.get("available_shares", 0)) + quantity,
+                "liquidity": liquidity_for(new_price, int(stock.get("available_shares", 0)) + quantity,
+                                           self.config.minimum_liquidity_minor),
+                "last_price_update_at": now,
+            })
+            await self.repo.insert_trade({
+                "stock_id": stock_id, "guild_id": 0, "user_id": user_id,
+                "side": "sell", "quantity": quantity, "price": price,
+                "gross": quote.gross_minor, "fee": quote.fee_minor,
+                "total": quote.total_minor, "ts": now,
+            })
+            await self.repo.insert_price_event({
+                "stock_id": stock_id, "guild_id": 0, "ts": now,
+                "price": new_price, "reason": "trade_sell",
+                "components": {"trade": impact}, "return": impact,
+            })
+            return TradeReceipt(ticker, quantity, price, quote.gross_minor,  # type: ignore
+                                quote.fee_minor, quote.total_minor, new_price, False)
 
     # -- reads --
     async def portfolio(self, guild_id: int | None = None, user_id: int | None = None, *args, **kwargs) -> dict:

@@ -30,12 +30,14 @@ def validate_description(description: str | None) -> str:
     return " ".join(description.split())[:500]
 
 
-def validate_quantity(qty: int) -> int:
-    """Must be a positive integer within a sane bound."""
+def validate_quantity(qty: int, max_trade_quantity: int | None = None) -> int:
+    """Must be a positive integer within a sane bound and hard-cap."""
     if isinstance(qty, bool) or not isinstance(qty, int):
         raise ValidationError("Quantity must be a whole number.")
     if not 1 <= qty <= 1_000_000:
         raise ValidationError("Quantity must be between 1 and 1,000,000.")
+    if max_trade_quantity is not None and qty > max_trade_quantity:
+        raise ValidationError(f"Quantity exceeds hard cap of {max_trade_quantity:,} shares per trade.")
     return qty
 
 
