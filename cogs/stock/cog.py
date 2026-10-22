@@ -146,7 +146,7 @@ class Stock(commands.Cog):
             await ctx.send(embed=_err_embed("Invalid argument."))
 
     # -- group --
-    @commands.group(name="stock", invoke_without_command=True)
+    @commands.group(name="stock", aliases=["stocks", "stks"], invoke_without_command=True)
     async def stock(self, ctx: commands.Context) -> None:
         await ctx.send(embed=self._help_embed())
 
@@ -178,12 +178,12 @@ class Stock(commands.Cog):
             return None
         return discord.File(buf, filename=f"{doc['ticker']}_chart.png")
 
-    @stock.command(name="help")
+    @stock.command(name="help", aliases=["h", "commands"])
     async def stock_help(self, ctx: commands.Context) -> None:
         await ctx.send(embed=self._help_embed())
 
     # -- create / info / market --
-    @stock.command(name="create")
+    @stock.command(name="create", aliases=["new", "add", "make"])
     @commands.cooldown(1, 60, commands.BucketType.user)
     async def stock_create(self, ctx: commands.Context, ticker: str, name: str,
                            *, description: str = "") -> None:
@@ -196,7 +196,7 @@ class Stock(commands.Cog):
                       f"{format_cash(doc['current_price'], self.config)} · {doc['total_shares']:,} shares")
         await ctx.send(embed=e)
 
-    @stock.command(name="info")
+    @stock.command(name="info", aliases=["i", "show", "view"])
     async def stock_info(self, ctx: commands.Context, ticker: str) -> None:
         try:
             doc = await self.service.require_stock(None, ticker)
@@ -219,7 +219,7 @@ class Stock(commands.Cog):
         else:
             await ctx.send(embed=e)
 
-    @stock.command(name="market")
+    @stock.command(name="market", aliases=["list", "all", "overview"])
     async def stock_market(self, ctx: commands.Context) -> None:
         stocks = await self.service.market_overview(None)
         if not stocks:
@@ -234,7 +234,7 @@ class Stock(commands.Cog):
                                            color=Colors.DARK_EMBED))
 
     # -- trading --
-    @stock.command(name="buy")
+    @stock.command(name="buy", aliases=["b", "purchase"])
     @commands.cooldown(1, 5, commands.BucketType.user)
     async def stock_buy(self, ctx: commands.Context, ticker: str, quantity: int) -> None:
         try:
@@ -247,7 +247,7 @@ class Stock(commands.Cog):
                       f"Total {format_cash(receipt.total_minor, self.config)}")
         await ctx.send(embed=e)
 
-    @stock.command(name="sell")
+    @stock.command(name="sell", aliases=["s", "dump"])
     @commands.cooldown(1, 5, commands.BucketType.user)
     async def stock_sell(self, ctx: commands.Context, ticker: str, quantity: int) -> None:
         try:
@@ -260,7 +260,7 @@ class Stock(commands.Cog):
                       f"Total {format_cash(receipt.total_minor, self.config)}")
         await ctx.send(embed=e)
 
-    @stock.command(name="portfolio")
+    @stock.command(name="portfolio", aliases=["pf", "p", "port", "holdings", "inv"])
     async def stock_portfolio(self, ctx: commands.Context, member: discord.Member | None = None) -> None:
         target = member or ctx.author
         data = await self.service.portfolio(None, target.id)
@@ -288,7 +288,7 @@ class Stock(commands.Cog):
         else:
             await ctx.send(embed=e)
 
-    @stock.command(name="balance")
+    @stock.command(name="balance", aliases=["bal", "cash", "wallet", "money", "funds"])
     async def stock_balance(self, ctx: commands.Context, member: discord.Member | None = None) -> None:
         target = member or ctx.author
         bal = await self.service.balance_of(None, target.id)
@@ -296,7 +296,7 @@ class Stock(commands.Cog):
                                            description=format_cash(bal, self.config),
                                            color=Colors.DARK_EMBED))
 
-    @stock.command(name="history")
+    @stock.command(name="history", aliases=["hist", "log", "h"])
     async def stock_history(self, ctx: commands.Context, ticker: str, limit: int = 10) -> None:
         try:
             doc = await self.service.require_stock(None, ticker)
@@ -322,7 +322,7 @@ class Stock(commands.Cog):
         else:
             await ctx.send(embed=e)
 
-    @stock.command(name="trades")
+    @stock.command(name="trades", aliases=["mytrades", "tx", "t"])
     async def stock_trades(self, ctx: commands.Context, member: discord.Member | None = None) -> None:
         target = member or ctx.author
         trades = await self.repo.list_trades(None, None, target.id, 15)
@@ -333,7 +333,7 @@ class Stock(commands.Cog):
             color=Colors.DARK_EMBED))
 
     # -- charts / stats / leaderboard --
-    @stock.command(name="chart")
+    @stock.command(name="chart", aliases=["c", "graph", "g"])
     @commands.cooldown(1, 10, commands.BucketType.user)
     async def stock_chart(self, ctx: commands.Context, ticker: str) -> None:
         try:
@@ -359,13 +359,13 @@ class Stock(commands.Cog):
             cutoff = time.time() - TWO_DAYS
             trades = [t for t in trades if float(t.get("ts", 0)) >= cutoff]
             buf = await asyncio.to_thread(price_chart, ts, prices, doc["ticker"],
-                                          self.config.currency_symbol, trades)
+                                          self.config.currency_symbol, trades, True)
         except Exception:
             await ctx.send(embed=_err_embed("Chart rendering failed; try again later."))
             return
         await ctx.send(file=discord.File(buf, filename=f"{doc['ticker']}_chart.png"))
 
-    @stock.command(name="stats")
+    @stock.command(name="stats", aliases=["st", "stat", "statistics"])
     async def stock_stats(self, ctx: commands.Context, ticker: str) -> None:
         try:
             doc = await self.service.require_stock(None, ticker)
@@ -383,7 +383,7 @@ class Stock(commands.Cog):
         e.add_field(name="Points", value=str(summary["points"]))
         await ctx.send(embed=e)
 
-    @stock.command(name="leaderboard")
+    @stock.command(name="leaderboard", aliases=["lb", "top", "rank", "leaders", "ranking"])
     async def stock_leaderboard(self, ctx: commands.Context) -> None:
         stocks = await self.service.market_overview(None)
         if not stocks:
@@ -415,7 +415,7 @@ class Stock(commands.Cog):
             pass
 
     # -- watchlist / alerts --
-    @stock.command(name="watch")
+    @stock.command(name="watch", aliases=["w", "follow", "track"])
     async def stock_watch(self, ctx: commands.Context, ticker: str) -> None:
         try:
             doc = await self.service.require_stock(None, ticker)
@@ -425,12 +425,12 @@ class Stock(commands.Cog):
         await self.repo.watch_add(None, ctx.author.id, doc["ticker"])
         await ctx.send(embed=_ok_embed(f"Watching `{doc['ticker']}`"))
 
-    @stock.command(name="unwatch")
+    @stock.command(name="unwatch", aliases=["uw", "unfollow", "untrack", "rm"])
     async def stock_unwatch(self, ctx: commands.Context, ticker: str) -> None:
         await self.repo.watch_remove(None, ctx.author.id, normalize_ticker(ticker))
         await ctx.send(embed=_ok_embed("Removed from watchlist"))
 
-    @stock.command(name="alert")
+    @stock.command(name="alert", aliases=["a", "notify", "pricealert"])
     async def stock_alert(self, ctx: commands.Context, ticker: str, price: float) -> None:
         try:
             doc = await self.service.require_stock(None, ticker)
