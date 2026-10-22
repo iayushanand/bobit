@@ -11,7 +11,7 @@ from cogs.stock.service import StockService
 class TestAccounting(unittest.TestCase):
     def test_invariants(self):
         async def go():
-            cfg = StockConfig()
+            cfg = StockConfig(min_hold_seconds=0, global_max_volume_per_window=100000, global_max_price_move_pct=1.0)
             repo = InMemoryRepository()
             svc = StockService(repo, cfg)
             await svc.create_stock(1, 100, "bit", "Bit Corp")

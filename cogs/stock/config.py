@@ -66,6 +66,12 @@ class StockConfig:
     min_hold_seconds: int = 30
     max_position_shares: int = 2000
 
+    # global per-stock throttle (sybil / coordinated pump protection)
+    global_max_volume_per_window: int = 2000
+    global_volume_window_seconds: int = 3600
+    global_max_price_move_pct: float = 0.12  # circuit breaker: halt if >12% in window
+    global_circuit_halt_seconds: int = 300
+
     excluded_channel_ids: tuple = field(default_factory=tuple)
     command_prefixes: tuple = field(default_factory=lambda: (".",))
 
@@ -122,6 +128,14 @@ class StockConfig:
             raise ValueError("min_hold_seconds cannot be negative")
         if self.max_position_shares < 1 or self.max_position_shares > self.total_supply:
             raise ValueError("max_position_shares must be within [1, total_supply]")
+        if self.global_max_volume_per_window < 1:
+            raise ValueError("global_max_volume_per_window must be >= 1")
+        if self.global_volume_window_seconds < 60:
+            raise ValueError("global_volume_window_seconds must be >= 60")
+        if not 0 < self.global_max_price_move_pct <= 1.0:
+            raise ValueError("global_max_price_move_pct must be within (0, 1]")
+        if self.global_circuit_halt_seconds < 0:
+            raise ValueError("global_circuit_halt_seconds cannot be negative")
 
 
 DEFAULT_CONFIG = StockConfig()

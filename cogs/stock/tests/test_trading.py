@@ -14,7 +14,10 @@ from cogs.stock.service import StockService
 
 
 def make_service(**overrides) -> tuple[StockService, InMemoryRepository]:
-    cfg = StockConfig(**overrides)
+    # tests need high global caps to avoid interfering with per-trade logic
+    defaults = dict(global_max_volume_per_window=100000, global_max_price_move_pct=1.0)
+    defaults.update(overrides)
+    cfg = StockConfig(**defaults)
     repo = InMemoryRepository()
     return StockService(repo, cfg), repo
 

@@ -49,10 +49,15 @@ async def _run_busy(cfg, days=2):
     return start, end
 
 
+def _test_cfg(**overrides):
+    d = dict(global_max_volume_per_window=100000, global_max_price_move_pct=1.0, min_hold_seconds=0)
+    d.update(overrides)
+    return StockConfig(**d)
+
 class TestSimulation(unittest.TestCase):
     def test_quiet_decays_gradually_no_collapse(self):
         import asyncio
-        cfg = StockConfig()
+        cfg = _test_cfg()
         start, end = asyncio.run(_run_quiet(cfg))
         change = (end - start) / start
         self.assertLess(change, 0.0, "quiet stock should drift down")
@@ -61,14 +66,14 @@ class TestSimulation(unittest.TestCase):
 
     def test_active_outperforms_quiet(self):
         import asyncio
-        cfg = StockConfig()
+        cfg = _test_cfg()
         qs, qe = asyncio.run(_run_quiet(cfg))
         bs, be = asyncio.run(_run_busy(cfg))
         self.assertGreater((be - bs) / bs, (qe - qs) / qs)
 
     def test_spam_capped_and_wash_neutral(self):
         import asyncio
-        cfg = StockConfig(min_hold_seconds=0)
+        cfg = _test_cfg()
 
         async def go():
             repo = InMemoryRepository()
@@ -99,7 +104,7 @@ class TestSimulation(unittest.TestCase):
 
     def test_downtime_restart_single_bounded_move(self):
         import asyncio
-        cfg = StockConfig()
+        cfg = _test_cfg()
 
         async def go():
             repo = InMemoryRepository()

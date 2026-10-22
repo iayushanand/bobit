@@ -66,6 +66,65 @@ class StockService:
         if new_qty > self.config.max_position_shares:
             raise LimitError(f"Position cap: max {self.config.max_position_shares:,} shares per stock (you would hold {new_qty:,}).")
 
+    async def _check_global_volume(self, stock_id: str, quantity: int) -> None:
+        """Global per-stock volume throttle: sum of all trades in window + this quantity must be <= cap."""
+        window_start = time.time() - self.config.global_volume_window_seconds
+        try:
+            trades = await self.repo.list_trades(None, stock_id, None, 5000)
+        except Exception:
+            return
+        volume = 0
+        oldest_in_window = None
+        for t in trades:
+            ts = float(t.get("ts", 0))
+            if ts >= window_start:
+                volume += int(t.get("quantity", 0))
+                if oldest_in_window is None or ts < oldest_in_window:
+                    oldest_in_window = ts
+        if volume + quantity > self.config.global_max_volume_per_window:
+            # estimate retry: time until oldest trade falls out of window
+            if oldest_in_window is not None:
+                retry = int((oldest_in_window + self.config.global_volume_window_seconds) - time.time())
+                retry = max(1, retry)
+            else:
+                retry = self.config.global_volume_window_seconds
+            raise LimitError(
+                f"Global limit: {self.config.global_max_volume_per_window:,} shares per {self.config.global_volume_window_seconds//60}m per stock. "
+                f"Already traded {volume:,} in window — try again in {retry}s."
+            )
+
+    async def _check_circuit_breaker(self, stock: dict, new_price: int) -> None:
+        """Halt if price moved > global_max_price_move_pct within the global window."""
+        stock_id = _stock_id(stock)
+        window_start = time.time() - self.config.global_volume_window_seconds
+        try:
+            history = await self.repo.list_price_history(stock_id, 500)
+        except Exception:
+            return
+        window_prices = [h for h in history if float(h.get("ts", 0)) >= window_start]
+        if not window_prices:
+            return
+        # earliest price in window is the window open
+        window_prices.sort(key=lambda h: float(h.get("ts", 0)))
+        open_price = int(window_prices[0].get("price", stock.get("initial_price", self.config.initial_price_minor)))
+        if open_price <= 0:
+            return
+        move = abs(new_price - open_price) / open_price
+        if move > self.config.global_max_price_move_pct:
+            raise TradingHaltedError(
+                f"Circuit breaker: {stock['ticker']} moved {move*100:.1f}% in {self.config.global_volume_window_seconds//60}m "
+                f"(limit {self.config.global_max_price_move_pct*100:.0f}%). Trading halted for {self.config.global_circuit_halt_seconds//60}m."
+            )
+
+    def _is_global_halted(self, stock: dict) -> bool:
+        # stock may have `global_halt_until` set by breaker — if still in future, consider halted
+        halt_until = stock.get("global_halt_until")
+        if halt_until is not None:
+            if time.time() < float(halt_until):
+                return True
+            # expired — caller should clear, but treat as not halted here
+        return False
+
     # -- balances -- global per user
     async def balance_of(self, guild_id: int | None = None, user_id: int | None = None, *args, **kwargs) -> int:
         # handle balance_of(user_id) and balance_of(guild_id, user_id)
@@ -150,6 +209,15 @@ class StockService:
     def _require_tradable(self, stock: dict) -> None:
         if stock.get("status") != STATUS_ACTIVE:
             raise TradingHaltedError(f"`{stock['ticker']}` is not tradable ({stock.get('status')}).")
+        # global circuit breaker halt
+        halt_until = stock.get("global_halt_until")
+        if halt_until is not None:
+            try:
+                if time.time() < float(halt_until):
+                    remain = int(float(halt_until) - time.time())
+                    raise TradingHaltedError(f"`{stock['ticker']}` is halted by circuit breaker — try again in {remain}s.")
+            except (ValueError, TypeError):
+                pass
 
     # -- buy / sell --
     async def buy(self, guild_id: int | None = None, user_id: int | None = None, ticker: str | None = None, quantity: int | None = None, *args, **kwargs) -> TradeReceipt:
@@ -179,6 +247,8 @@ class StockService:
         async with self._lock_for(stock_id):
             stock = await self.require_stock(guild_id, ticker)  # type: ignore
             self._require_tradable(stock)
+            # global volume throttle
+            await self._check_global_volume(stock_id, quantity)
             price = int(stock["current_price"])
             if int(stock.get("available_shares", 0)) < quantity:
                 raise NoSupplyError("Not enough shares available in the offering pool.")
@@ -194,6 +264,17 @@ class StockService:
                                          self.config.minimum_liquidity_minor, self.config.max_trade_move)
             new_price = apply_return_to_price(price, impact, self.config.min_price_minor,
                                               self.config.max_price_minor)
+            # circuit breaker on resulting price
+            try:
+                await self._check_circuit_breaker(stock, new_price)
+            except TradingHaltedError:
+                # persist halt so all traders see it
+                halt_until = time.time() + self.config.global_circuit_halt_seconds
+                try:
+                    await self.repo.update_stock(stock_id, {"global_halt_until": halt_until})
+                except Exception:
+                    pass
+                raise
             now = time.time()
             await self.repo.set_balance(guild_id, user_id, balance - quote.total_minor)
             await self.repo.adjust_holding(guild_id, user_id, stock_id, quantity)
@@ -248,6 +329,7 @@ class StockService:
         async with self._lock_for(stock_id):
             stock = await self.require_stock(guild_id, ticker)  # type: ignore
             self._require_tradable(stock)
+            await self._check_global_volume(stock_id, quantity)
             price = int(stock["current_price"])
             holding = await self.repo.get_holding(guild_id, user_id, stock_id)
             if holding < quantity:
@@ -259,6 +341,15 @@ class StockService:
                                          self.config.minimum_liquidity_minor, self.config.max_trade_move)
             new_price = apply_return_to_price(price, impact, self.config.min_price_minor,
                                               self.config.max_price_minor)
+            try:
+                await self._check_circuit_breaker(stock, new_price)
+            except TradingHaltedError:
+                halt_until = time.time() + self.config.global_circuit_halt_seconds
+                try:
+                    await self.repo.update_stock(stock_id, {"global_halt_until": halt_until})
+                except Exception:
+                    pass
+                raise
             now = time.time()
             balance = await self.balance_of(guild_id, user_id)
             await self.repo.set_balance(guild_id, user_id, balance + quote.total_minor)
