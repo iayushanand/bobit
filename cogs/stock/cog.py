@@ -296,6 +296,34 @@ class Stock(commands.Cog):
                                            description=format_cash(bal, self.config),
                                            color=Colors.DARK_EMBED))
 
+    @stock.command(name="pay", aliases=["give", "send", "transfer", "tip"])
+    @commands.cooldown(1, 5, commands.BucketType.user)
+    async def stock_pay(self, ctx: commands.Context, member: discord.Member, amount: float) -> None:
+        if member.bot:
+            await ctx.send(embed=_err_embed("You cannot pay a bot."))
+            return
+        if member.id == ctx.author.id:
+            await ctx.send(embed=_err_embed("You cannot pay yourself."))
+            return
+        try:
+            amount_minor = int(round(float(amount) * 100))
+        except Exception:
+            await ctx.send(embed=_err_embed("Invalid amount."))
+            return
+        if amount_minor <= 0:
+            await ctx.send(embed=_err_embed("Amount must be positive."))
+            return
+        giver_bal = await self.service.balance_of(None, ctx.author.id)
+        if giver_bal < amount_minor:
+            await ctx.send(embed=_err_embed(f"Insufficient funds. You have {format_cash(giver_bal, self.config)}."))
+            return
+        receiver_bal = await self.service.balance_of(None, member.id)
+        await self.repo.set_balance(None, ctx.author.id, giver_bal - amount_minor)
+        await self.repo.set_balance(None, member.id, receiver_bal + amount_minor)
+        e = discord.Embed(title="Payment sent", description=f"{ctx.author.mention} → {member.mention} — {format_cash(amount_minor, self.config)}", color=Colors.GREEN)
+        e.add_field(name="Your balance", value=format_cash(giver_bal - amount_minor, self.config))
+        await ctx.send(embed=e)
+
     @stock.command(name="history", aliases=["hist", "log"])
     async def stock_history(self, ctx: commands.Context, ticker: str, limit: int = 10) -> None:
         try:
@@ -417,7 +445,7 @@ class Stock(commands.Cog):
 
         title = f"{target.display_name}'s trade log" + (f" — {resolved_ticker} — {resolved_name}" if resolved_ticker else "")
         e = discord.Embed(title=title, description="\n".join(lines), color=Colors.DARK_EMBED)
-        e.set_footer(text=f"Showing {len(lines)} of {len(trades)} • .stock tradelog [TICKER] [@user]")
+        e.set_footer(text=f"Showing {len(lines)} of {len(trades)}")
         await ctx.send(embed=e)
 
     # -- charts / stats / leaderboard --
