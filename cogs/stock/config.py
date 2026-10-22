@@ -33,7 +33,7 @@ class StockConfig:
 
     owner_activity_target: int = 10
     holder_activity_target: int = 20
-    holder_per_member_cap: int = 5
+    holder_per_member_cap: int = 3
 
     owner_max_return: float = 0.001
     holder_max_return: float = 0.0004
