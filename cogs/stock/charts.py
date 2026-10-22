@@ -218,14 +218,49 @@ def allocation_chart(labels: list[str], values: list[float], title: str = "Portf
 
 
 def movers_chart(labels: list[str], changes_pct: list[float], title: str = "Movers %") -> io.BytesIO:
-    """Bar chart of gainers/losers percentage changes."""
-    fig, ax = plt.subplots(figsize=(8, 4))
-    ax.set_title(title)
-    ax.set_ylabel("% change")
-    if labels:
-        colors = ["green" if c >= 0 else "red" for c in changes_pct]
-        ax.bar(labels, [c * 100.0 for c in changes_pct], color=colors)
-        ax.tick_params(axis="x", rotation=30)
-    else:
-        ax.text(0.5, 0.5, "no data", ha="center", transform=ax.transAxes)
-    return _save(fig)
+    """Dark-mode beautified bar chart of gainers/losers percentage changes."""
+    with plt.style.context("dark_background"):
+        fig, ax = plt.subplots(figsize=(8, 4.2), facecolor=CHART_BG)
+        ax.set_facecolor(CHART_BG)
+        ax.set_title(title, color="white", fontsize=13, weight=600, pad=16)
+        ax.set_ylabel("% change", color="#9CA3AF", fontsize=9)
+        ax.grid(axis="y", color=GRID_COLOR, alpha=0.6, linestyle="--", linewidth=0.6)
+        ax.set_axisbelow(True)
+        # styled ticks
+        ax.tick_params(colors="#E5E7EB", labelsize=8.5, axis="x", rotation=18)
+        ax.tick_params(colors="#9CA3AF", labelsize=8.5, axis="y")
+
+        # spine styling
+        for spine in ax.spines.values():
+            spine.set_color(GRID_COLOR)
+
+        if not labels:
+            ax.text(0.5, 0.5, "no data", ha="center", va="center", transform=ax.transAxes, color="#9CA3AF", fontsize=11)
+            # hide ticks
+            ax.set_xticks([])
+            return _save(fig)
+
+        values = [c * 100.0 for c in changes_pct]
+        colors = [CANDLE_UP if c >= 0 else CANDLE_DOWN for c in changes_pct]
+        # rounded-ish bars with edge
+        bars = ax.bar(labels, values, color=colors, edgecolor=CHART_BG, linewidth=1.2, width=0.62, zorder=3)
+        # value labels on bars
+        ymax = max(values) if values else 1
+        ymin = min(values) if values else -1
+        ypad = max(abs(ymax), abs(ymin), 1) * 0.08
+        for bar, val in zip(bars, values):
+            y = bar.get_height()
+            txt = f"{val:+.2f}%"
+            color = "white"
+            # place slightly above positive, below negative
+            va = "bottom" if y >= 0 else "top"
+            offset = 3 if y >= 0 else -3
+            ax.text(bar.get_x() + bar.get_width() / 2, y + (ypad * 0.15 if y >= 0 else -ypad * 0.15),
+                    txt, ha="center", va=va, color=color, fontsize=8, weight=700)
+
+        # zero line
+        ax.axhline(0, color="#4B5563", linewidth=1, zorder=2)
+        # tighten y limits with padding
+        ax.margins(y=0.18)
+        # no x label needed
+        return _save(fig)

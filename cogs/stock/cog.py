@@ -363,7 +363,10 @@ class Stock(commands.Cog):
         except Exception:
             await ctx.send(embed=_err_embed("Chart rendering failed; try again later."))
             return
-        await ctx.send(file=discord.File(buf, filename=f"{doc['ticker']}_chart.png"))
+        e = discord.Embed(title=f"{doc['ticker']} chart", description=f"Current {format_cash(int(doc['current_price']), self.config)}", color=Colors.DARK_EMBED)
+        chart_file = discord.File(buf, filename=f"{doc['ticker']}_chart.png")
+        e.set_image(url=f"attachment://{chart_file.filename}")
+        await ctx.send(embed=e, file=chart_file)
 
     @stock.command(name="stats", aliases=["st", "stat", "statistics"])
     async def stock_stats(self, ctx: commands.Context, ticker: str) -> None:
@@ -398,21 +401,28 @@ class Stock(commands.Cog):
             return
         ranked = sorted(worth.items(), key=lambda kv: kv[1], reverse=True)[:10]
         lines = [f"<@{uid}> — {format_cash(val, self.config)} (est.)" for uid, val in ranked]
-        await ctx.send(embed=discord.Embed(title="Leaderboard",
-                                           description="\n".join(lines), color=Colors.GOLD))
-        if not CHARTS_AVAILABLE:
-            return
-        try:
-            history_by = {str(s["_id"]): await self.repo.list_price_history(str(s["_id"]), 100)
-                          for s in stocks[:10]}
-            gainers, _ = movers(stocks[:10], history_by, limit=5)
-            if gainers:
-                buf = await asyncio.to_thread(
-                    movers_chart, [g["ticker"] for g in gainers],
-                    [g["change_pct"] for g in gainers], "Top movers %")
-                await ctx.send(file=discord.File(buf, filename="movers.png"))
-        except Exception:
-            pass
+        e = discord.Embed(title="Leaderboard", description="\n".join(lines), color=Colors.GOLD)
+        chart_file = None
+        if CHARTS_AVAILABLE:
+            try:
+                history_by = {str(s["_id"]): await self.repo.list_price_history(str(s["_id"]), 100)
+                              for s in stocks[:10]}
+                # filter to 2-day for movers consistency
+                for sid in list(history_by.keys()):
+                    history_by[sid] = _recent_history(history_by[sid])
+                gainers, _ = movers(stocks[:10], history_by, limit=5)
+                if gainers:
+                    buf = await asyncio.to_thread(
+                        movers_chart, [g["ticker"] for g in gainers],
+                        [g["change_pct"] for g in gainers], "Top movers %")
+                    chart_file = discord.File(buf, filename="movers.png")
+                    e.set_image(url="attachment://movers.png")
+            except Exception:
+                chart_file = None
+        if chart_file:
+            await ctx.send(embed=e, file=chart_file)
+        else:
+            await ctx.send(embed=e)
 
     # -- watchlist / alerts --
     @stock.command(name="watch", aliases=["w", "follow", "track"])
