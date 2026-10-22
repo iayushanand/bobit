@@ -332,6 +332,73 @@ class Stock(commands.Cog):
             description="\n".join(lines) if lines else "No trades yet.",
             color=Colors.DARK_EMBED))
 
+    @stock.command(name="tradelog", aliases=["tlog", "tl", "txlog"])
+    async def stock_tradelog(self, ctx: commands.Context, *args) -> None:
+        """Trade log for an individual — ` .stock tradelog [TICKER] [@user]` (order independent, shows last 15)"""
+        # flexible parse: any arg that converts to Member is member, first non-member string is ticker
+        ticker_str: str | None = None
+        target: discord.Member | None = None
+        for arg in args:
+            # try member conversion
+            try:
+                m = await commands.MemberConverter().convert(ctx, arg)
+                if target is None:
+                    target = m
+                    continue
+            except Exception:
+                pass
+            # numeric limit ignored; first non-member string is ticker
+            if ticker_str is None and not arg.isdigit():
+                # strip mention-like remnants
+                if not arg.startswith("<@"):
+                    ticker_str = arg
+            elif ticker_str is None and arg.startswith("<@"):
+                # already handled as member, ignore
+                pass
+        # fallback to mentions in message (handles nick mentions not caught)
+        if target is None and ctx.message.mentions:
+            target = ctx.message.mentions[0]
+        if target is None:
+            target = ctx.author  # type: ignore
+
+        stock_id: str | None = None
+        resolved_ticker: str | None = None
+        if ticker_str:
+            try:
+                doc = await self.service.require_stock(None, ticker_str)
+                stock_id = str(doc["_id"])
+                resolved_ticker = doc["ticker"]
+            except StockError as exc:
+                await ctx.send(embed=_err_embed(str(exc)))
+                return
+
+        trades = await self.repo.list_trades(None, stock_id, target.id, 20)
+        # enrich ticker if we queried without ticker filter (need stock lookup for display)
+        if not resolved_ticker:
+            # try to show ticker per trade via lookup (best effort, last 15)
+            pass
+
+        if not trades:
+            title = f"{target.display_name}'s trade log" + (f" — {resolved_ticker}" if resolved_ticker else "")
+            await ctx.send(embed=discord.Embed(title=title, description="No trades yet.", color=Colors.DARK_EMBED))
+            return
+
+        lines: list[str] = []
+        for t in trades[:15]:
+            ts = int(float(t.get("ts", 0)))
+            side = str(t.get("side", "buy")).upper()
+            qty = t.get("quantity", 0)
+            price = int(t.get("price", 0)) if t.get("price") is not None else 0
+            # prefer stored ticker, else resolved, else stock_id short
+            label = resolved_ticker or t.get("ticker") or str(t.get("stock_id", ""))[:6]
+            price_str = format_cash(price, self.config) if price else ""
+            lines.append(f"<t:{ts}:R> **{side}** {label} ×{qty} @ {price_str}")
+
+        title = f"{target.display_name}'s trade log" + (f" — {resolved_ticker}" if resolved_ticker else "")
+        e = discord.Embed(title=title, description="\n".join(lines), color=Colors.DARK_EMBED)
+        e.set_footer(text=f"Showing {len(lines)} of {len(trades)} • .stock tradelog [TICKER] [@user]")
+        await ctx.send(embed=e)
+
     # -- charts / stats / leaderboard --
     @stock.command(name="chart", aliases=["c", "graph", "g"])
     @commands.cooldown(1, 10, commands.BucketType.user)
