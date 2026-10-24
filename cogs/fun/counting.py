@@ -225,26 +225,23 @@ class Counting(commands.Cog):
             return
         if state.get("last_message_id") != payload.message_id:
             return
-        # need to restore using DB state (content = count, user = last_user_id)
         count = state.get("count")
         last_user_id = state.get("last_user_id")
         if count is None or last_user_id is None:
             return
-        # fetch user for pfp/name
         try:
             user = self.bot.get_user(last_user_id)
             if user is None:
                 user = await self.bot.fetch_user(last_user_id)
         except (discord.NotFound, discord.HTTPException):
             return
-        # get channel
         try:
             channel = self.bot.get_channel(payload.channel_id)
             if channel is None:
                 channel = await self.bot.fetch_channel(payload.channel_id)
         except (discord.NotFound, discord.Forbidden, discord.HTTPException):
             return
-        webhook, thread = await self._get_webhook_for_counting(channel)  # type: ignore
+        webhook, thread = await self._get_webhook_for_counting(channel)
         if webhook is None:
             return
         try:
@@ -276,35 +273,58 @@ class Counting(commands.Cog):
             description=f"Current count: **{current}**\nNext: **{next_expected}**\nThread: <#{COUNTING_THREAD_ID}>",
             color=Colors.BLURPLE,
         )
-        e.set_footer(text="Use .counting leaderboard to see top counters")
         await ctx.send(embed=e)
 
     @counting_group.command(name="leaderboard", aliases=["lb", "top", "rank", "leaders"])
     async def counting_leaderboard(self, ctx: commands.Context, limit: int = 10):
         limit = max(1, min(int(limit), 25))
-        docs = await self._get_leaderboard(limit)
+        top_limit = 10 if limit == 10 else limit
+        docs = await self._get_leaderboard(top_limit)
         if not docs:
             await ctx.send(embed=discord.Embed(description="No counts yet. Start counting in the thread!", color=Colors.DARK_EMBED))
             return
-        # also fetch current count for header
         state = await self._get_state()
         current = int(state.get("count", 0))
 
         lines: list[str] = []
         medals = ["🥇", "🥈", "🥉"]
+        top_ids = set()
         for idx, doc in enumerate(docs, start=1):
             user_id = int(doc.get("user_id", 0))
             cnt = int(doc.get("count", 0))
-            # try to resolve display name
+            top_ids.add(user_id)
             user = self.bot.get_user(user_id)
             name = user.display_name if user else f"<@{user_id}>"
-            # try guild member for nicer name if in guild
             if ctx.guild:
                 member = ctx.guild.get_member(user_id)
                 if member:
                     name = member.display_name
             prefix = medals[idx - 1] if idx <= 3 else f"`{idx}.`"
+            if user_id == ctx.author.id:
+                name = f"__{name}__"
             lines.append(f"{prefix} **{name}** — {cnt:,}")
+
+        if ctx.author.id not in top_ids:
+            try:
+                author_doc = await self.bot.db.counting.find_one({"_id": f"user:{ctx.author.id}"})
+            except Exception:
+                author_doc = None
+            author_cnt = int(author_doc.get("count", 0)) if author_doc else 0
+            try:
+                if author_cnt > 0:
+                    rank = await self.bot.db.counting.count_documents({"_id": {"$regex": "^user:"}, "count": {"$gt": author_cnt}}) + 1
+                else:
+                    total = await self.bot.db.counting.count_documents({"_id": {"$regex": "^user:"}})
+                    rank = total + 1 if total else None
+            except Exception:
+                rank = None
+            if rank is not None:
+                author_name = ctx.author.display_name
+                lines.append("")  # separator
+                if author_cnt > 0:
+                    lines.append(f"`{rank}.` **__{author_name}__** — {author_cnt:,}  ← you")
+                else:
+                    lines.append(f"`{rank}.` **__{author_name}__** — 0  ← you (no counts yet)")
 
         e = discord.Embed(
             title="Counting Leaderboard",
@@ -313,7 +333,7 @@ class Counting(commands.Cog):
         )
         e.add_field(name="Current Count", value=f"**{current:,}**", inline=True)
         e.add_field(name="Thread", value=f"<#{COUNTING_THREAD_ID}>", inline=True)
-        e.set_footer(text=f"Top {len(lines)} counters")
+        e.set_footer(text=f"Top {len(docs)} + your position • Next: {current + 1}")
         await ctx.send(embed=e)
 
     @counting_group.command(name="stats", aliases=["me", "self"])
@@ -325,7 +345,6 @@ class Counting(commands.Cog):
             doc = None
         cnt = int(doc.get("count", 0)) if doc else 0
         state = await self._get_state()
-        # rank calculation: count how many have more than target
         try:
             rank = await self.bot.db.counting.count_documents({"_id": {"$regex": "^user:"}, "count": {"$gt": cnt}}) + 1 if cnt > 0 else None
         except Exception:
