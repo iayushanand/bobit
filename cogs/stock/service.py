@@ -90,7 +90,7 @@ class StockService:
                 retry = self.config.global_volume_window_seconds
             raise LimitError(
                 f"Global limit: {self.config.global_max_volume_per_window:,} shares per {self.config.global_volume_window_seconds//60}m per stock. "
-                f"Already traded {volume:,} in window — try again in {retry}s."
+                f"Already traded {volume:,} in window - try again in {retry}s."
             )
 
     async def _check_circuit_breaker(self, stock: dict, new_price: int) -> None:
@@ -117,12 +117,12 @@ class StockService:
             )
 
     def _is_global_halted(self, stock: dict) -> bool:
-        # stock may have `global_halt_until` set by breaker — if still in future, consider halted
+        # stock may have `global_halt_until` set by breaker - if still in future, consider halted
         halt_until = stock.get("global_halt_until")
         if halt_until is not None:
             if time.time() < float(halt_until):
                 return True
-            # expired — caller should clear, but treat as not halted here
+            # expired - caller should clear, but treat as not halted here
         return False
 
     # -- balances -- global per user
@@ -215,7 +215,7 @@ class StockService:
             try:
                 if time.time() < float(halt_until):
                     remain = int(float(halt_until) - time.time())
-                    raise TradingHaltedError(f"`{stock['ticker']}` is halted by circuit breaker — try again in {remain}s.")
+                    raise TradingHaltedError(f"`{stock['ticker']}` is halted by circuit breaker - try again in {remain}s.")
             except (ValueError, TypeError):
                 pass
 
@@ -315,8 +315,7 @@ class StockService:
                     user_id = kwargs.get("user_id")
         if guild_id is None:
             guild_id = 0
-        quantity = validate_quantity(quantity, self.config.max_trade_quantity)  # type: ignore
-        self._check_hard_cap(quantity)
+        quantity = validate_quantity(quantity)  # type: ignore
         stock = await self.require_stock(guild_id, ticker)  # type: ignore
         self._require_tradable(stock)
         stock_id = _stock_id(stock)

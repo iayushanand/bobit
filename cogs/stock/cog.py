@@ -141,7 +141,7 @@ class Stock(commands.Cog):
         if isinstance(original, StockError):
             await ctx.send(embed=_err_embed(str(original)))
         elif isinstance(error, commands.CommandOnCooldown):
-            await ctx.send(embed=_err_embed(f"Slow down — retry in {error.retry_after:.0f}s."))
+            await ctx.send(embed=_err_embed(f"Slow down - retry in {error.retry_after:.0f}s."))
         elif isinstance(error, commands.BadArgument):
             await ctx.send(embed=_err_embed("Invalid argument."))
 
@@ -192,7 +192,7 @@ class Stock(commands.Cog):
         except StockError as exc:
             await ctx.send(embed=_err_embed(str(exc)))
             return
-        e = _ok_embed(f"Created `{doc['ticker']}` — {doc['name']}",
+        e = _ok_embed(f"Created `{doc['ticker']}` - {doc['name']}",
                       f"{format_cash(doc['current_price'], self.config)} · {doc['total_shares']:,} shares")
         await ctx.send(embed=e)
 
@@ -206,7 +206,7 @@ class Stock(commands.Cog):
         history = await self.repo.list_price_history(str(doc["_id"]), limit=500)
         history = _recent_history(history)
         summary = summarize(history)
-        e = discord.Embed(title=f"{doc['ticker']} — {doc.get('name', '')}",
+        e = discord.Embed(title=f"{doc['ticker']} - {doc.get('name', '')}",
                           description=(doc.get("description") or "")[:200],
                           color=Colors.DARK_EMBED)
         e.add_field(name="Price", value=format_cash(int(doc["current_price"]), self.config))
@@ -227,7 +227,7 @@ class Stock(commands.Cog):
                                                description="No stocks yet. `.stock create TICKER Name`",
                                                color=Colors.DARK_EMBED))
             return
-        lines = [f"**{s['ticker']}** {s.get('name', '')} — "
+        lines = [f"**{s['ticker']}** {s.get('name', '')} - "
                  f"{format_cash(int(s['current_price']), self.config)} "
                  f"({s.get('available_shares', 0):,} avail)" for s in stocks[:20]]
         await ctx.send(embed=discord.Embed(title="Market", description="\n".join(lines),
@@ -274,10 +274,8 @@ class Stock(commands.Cog):
             if qty <= 0:
                 await ctx.send(embed=_err_embed("Insufficient funds to buy any shares."))
                 return
-            if hi_cap == self.config.max_trade_quantity and best == hi_cap and available > hi_cap:
-                await ctx.send(embed=discord.Embed(title="Capped", description=f"`all` capped to hard cap {self.config.max_trade_quantity:,} shares per trade. Run again for more.", color=Colors.GOLD))
         else:
-            # strict integer parsing — reject floats, scientific, negatives
+            # strict integer parsing - reject floats, scientific, negatives
             cleaned = str(quantity).replace(",", "").strip()
             if not cleaned.isdigit():
                 await ctx.send(embed=_err_embed("Invalid quantity. Use a whole number or `all` (no decimals)."))
@@ -315,10 +313,6 @@ class Stock(commands.Cog):
             if qty <= 0:
                 await ctx.send(embed=_err_embed("You don't hold any shares of that stock."))
                 return
-            # hard-cap sell-all to max_trade_quantity to prevent instant dump exploit
-            if qty > self.config.max_trade_quantity:
-                qty = self.config.max_trade_quantity
-                await ctx.send(embed=discord.Embed(title="Capped", description=f"`all` capped to hard cap {self.config.max_trade_quantity:,} shares per trade. Run again to sell more.", color=Colors.GOLD))
         else:
             cleaned = str(quantity).replace(",", "").strip()
             if not cleaned.isdigit():
@@ -328,9 +322,6 @@ class Stock(commands.Cog):
                 qty = int(cleaned)
             except Exception:
                 await ctx.send(embed=_err_embed("Invalid quantity. Use a number or `all`."))
-                return
-            if qty > self.config.max_trade_quantity:
-                await ctx.send(embed=_err_embed(f"Hard cap: max {self.config.max_trade_quantity:,} shares per trade."))
                 return
         try:
             receipt = await self.service.sell(None, ctx.author.id, ticker, qty)
@@ -410,7 +401,7 @@ class Stock(commands.Cog):
         receiver_bal = await self.service.balance_of(None, member.id)
         await self.repo.set_balance(None, ctx.author.id, giver_bal - amount_minor)
         await self.repo.set_balance(None, member.id, receiver_bal + amount_minor)
-        e = discord.Embed(title="Payment sent", description=f"{ctx.author.mention} → {member.mention} — {format_cash(amount_minor, self.config)}", color=Colors.GREEN)
+        e = discord.Embed(title="Payment sent", description=f"{ctx.author.mention} → {member.mention} - {format_cash(amount_minor, self.config)}", color=Colors.GREEN)
         e.add_field(name="Your balance", value=format_cash(giver_bal - amount_minor, self.config))
         await ctx.send(embed=e)
 
@@ -452,7 +443,7 @@ class Stock(commands.Cog):
 
     @stock.command(name="tradelog", aliases=["tlog", "tl", "txlog"])
     async def stock_tradelog(self, ctx: commands.Context, *args) -> None:
-        """Trade log for an individual — ` .stock tradelog [TICKER] [@user]` (order independent, shows last 15)"""
+        """Trade log for an individual - ` .stock tradelog [TICKER] [@user]` (order independent, shows last 15)"""
         # flexible parse: any arg that converts to Member is member, first non-member string is ticker
         ticker_str: str | None = None
         target: discord.Member | None = None
@@ -495,7 +486,7 @@ class Stock(commands.Cog):
         trades = await self.repo.list_trades(None, stock_id, target.id, 20)
 
         if not trades:
-            title = f"{target.display_name}'s trade log" + (f" — {resolved_ticker} — {resolved_name}" if resolved_ticker else "")
+            title = f"{target.display_name}'s trade log" + (f" - {resolved_ticker} - {resolved_name}" if resolved_ticker else "")
             await ctx.send(embed=discord.Embed(title=title, description="No trades yet.", color=Colors.DARK_EMBED))
             return
 
@@ -530,10 +521,10 @@ class Stock(commands.Cog):
                 info = doc2 or {"ticker": t.get("ticker") or sid[:6], "name": ""}  # type: ignore
             ticker_label = info.get("ticker") or sid[:6]
             name_label = info.get("name") or ""
-            label = f"{ticker_label} — {name_label}" if name_label else ticker_label
-            lines.append(f"<t:{ts}:R> **{side}** {label} ×{qty} @ {price_str}")
+            label = f"{ticker_label} - {name_label}" if name_label else ticker_label
+            lines.append(f"<t:{ts}:R> **{side}** {label} x{qty} @ {price_str}")
 
-        title = f"{target.display_name}'s trade log" + (f" — {resolved_ticker} — {resolved_name}" if resolved_ticker else "")
+        title = f"{target.display_name}'s trade log" + (f" - {resolved_ticker} - {resolved_name}" if resolved_ticker else "")
         e = discord.Embed(title=title, description="\n".join(lines), color=Colors.DARK_EMBED)
         e.set_footer(text=f"Showing {len(lines)} of {len(trades)}")
         await ctx.send(embed=e)
@@ -606,7 +597,7 @@ class Stock(commands.Cog):
             await ctx.send(embed=_err_embed("No holders yet."))
             return
         ranked = sorted(worth.items(), key=lambda kv: kv[1], reverse=True)[:10]
-        lines = [f"<@{uid}> — {format_cash(val, self.config)} (est.)" for uid, val in ranked]
+        lines = [f"<@{uid}> - {format_cash(val, self.config)} (est.)" for uid, val in ranked]
         e = discord.Embed(title="Leaderboard", description="\n".join(lines), color=Colors.GOLD)
         chart_file = None
         if CHARTS_AVAILABLE:
