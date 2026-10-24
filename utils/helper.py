@@ -10,13 +10,13 @@ import numpy as np
 
 from discord.ext import commands
 from io import BytesIO
-from PIL import Image, ImageDraw, ImageFont, ImageOps, ImageEnhance
+from PIL import Image, ImageDraw, ImageFont, ImageOps, ImageEnhance, ImageChops, ImageFilter
 from cbvx import iml
 from typing import Tuple
 import time as _time
 from lrclib import LrcLibAPI
 from lrclib.exceptions import ServerError, APIError
-from utils.consts import SPOTIFY_EMOJI, FONT_SPOTIFY_PATH, FONT_INTERBLACK_PATH
+from utils.consts import SPOTIFY_EMOJI, FONT_SPOTIFY_PATH, FONT_INTERBLACK_PATH, FONT_MAKISUPA_PATH, WELCOME_BG_PATH
 
 class Spotify:
     __slots__ = ("member", "bot", "embed", "regex", "headers", "counter")
@@ -339,3 +339,49 @@ def create_quote_buffer(avatar, quote, display_name, username):
             fp=image_binary,
             filename="quote.png",
         )
+
+
+class WeclomeBanner():
+    def __init__(self):
+        self.font = {
+            "username": ImageFont.truetype("assets/fonts/RougeScript.ttf", 80),
+        }
+
+    def circle(self, pfp, size=(220, 220)):
+        pfp = pfp.resize(size, Image.LANCZOS).convert("RGBA")
+        bigsize = (pfp.size[0] * 3, pfp.size[1] * 3)
+        mask = Image.new("L", bigsize, 0)
+        ImageDraw.Draw(mask).ellipse((0, 0) + bigsize, fill=255)
+        mask = mask.resize(pfp.size, Image.LANCZOS)
+        mask = ImageChops.darker(mask, pfp.split()[-1])
+        pfp.putalpha(mask)
+        return pfp
+
+    def make_banner(self, username, pfp, member_count=None):
+        bg = Image.open("assets/images/bannerbg.png")
+        frame = Image.open("assets/images/frame.png")
+        pfp_raw = Image.open(pfp)
+
+        avatar_size = 180
+
+        pfp_circle = self.circle(pfp_raw, size=(avatar_size, avatar_size))
+
+        bg.paste(pfp_circle, (673, 431), pfp_circle)
+        bg.paste(frame, (0,0), frame)
+
+        draw = ImageDraw.Draw(bg)
+
+        filtered_name = f"{username[0:10]}..." if len(username) > 10 else username
+
+        draw.text((1160, 517), filtered_name, anchor="mm", font=self.font["username"], fill="#F4B4F4")
+        
+        final = bg
+
+        with BytesIO() as image_binary:
+            final.save(image_binary, "PNG", quality=95)
+            image_binary.seek(0)
+            return discord.File(fp=image_binary, filename="welcome.png")
+
+
+# Alias for correct spelling
+WelcomeBanner = WeclomeBanner

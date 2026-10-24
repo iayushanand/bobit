@@ -5,7 +5,7 @@ from discord.ext import commands, tasks
 from io import BytesIO
 from utils.bot import BoBit
 from utils.consts import COUNTING_THREAD_ID, WELCOME_CHANNEL_ID, COUNTDOWN_CHANNEL_ID
-from utils.welcomer import WeclomeBanner
+from utils.helper import WeclomeBanner
 
 # instagram -> kkinstagram fixer
 INSTAGRAM_RE = re.compile(r"https?://(?:www\.)?instagram\.com/[^\s<>\"]+", re.IGNORECASE)
