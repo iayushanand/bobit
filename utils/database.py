@@ -19,6 +19,7 @@ class Database:
         self.ventban = None
         self.afk = None
         self.tags = None
+        self.counting = None
         self.stock = None
         self.stock_stocks = None
         self.stock_holdings = None
@@ -42,6 +43,7 @@ class Database:
             self.ventban = db["ventban"]
             self.afk = db["afk"]
             self.tags = db["tags"]
+            self.counting = db["counting"]
             self.stock = db["stock"]
             self.stock_stocks = db["stock_stocks"]
             self.stock_holdings = db["stock_holdings"]
