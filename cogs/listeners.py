@@ -4,7 +4,7 @@ import discord
 from discord.ext import commands, tasks
 from io import BytesIO
 from utils.bot import BoBit
-from utils.consts import WELCOME_CHANNEL_ID, COUNTDOWN_CHANNEL_ID
+from utils.consts import COUNTING_THREAD_ID, WELCOME_CHANNEL_ID, COUNTDOWN_CHANNEL_ID
 from utils.welcomer import WeclomeBanner
 
 # instagram -> kkinstagram fixer
@@ -35,6 +35,7 @@ class Listeners(commands.Cog):
         super().__init__()
         self.bot = bot
         self.banner = WeclomeBanner()
+        self._last_message_id: dict[int, int] = {}
         self.update_year_countdown.start()
 
     def cog_unload(self):
@@ -79,6 +80,11 @@ class Listeners(commands.Cog):
     async def on_message(self, message: discord.Message):
         if message.author.bot or getattr(message, "webhook_id", None):
             return
+        # track latest message per channel for delete-restore logic
+        try:
+            self._last_message_id[message.channel.id] = message.id
+        except Exception:
+            pass
         content = message.content or ""
         if not content:
             return
@@ -171,6 +177,122 @@ class Listeners(commands.Cog):
                 pass
         except (discord.Forbidden, discord.HTTPException):
             pass
+
+    async def _get_webhook_for_channel(self, channel: discord.abc.GuildChannel | discord.Thread) -> tuple[discord.Webhook | None, discord.Thread | None]:
+        """Return (webhook, thread) for webhook send. Handles TextChannel and Thread."""
+        thread = None
+        target: discord.TextChannel | None = None
+        if isinstance(channel, discord.Thread):
+            thread = channel
+            target = channel.parent  # type: ignore
+            if not isinstance(target, discord.TextChannel):
+                return None, None
+        elif isinstance(channel, discord.TextChannel):
+            target = channel
+        else:
+            return None, None
+        try:
+            webhooks = await target.webhooks()
+            webhook: discord.Webhook | None = None
+            for wh in webhooks:
+                if wh.token is not None and wh.user and wh.user.id == self.bot.user.id:
+                    webhook = wh
+                    break
+            if webhook is None:
+                for wh in webhooks:
+                    if wh.token is not None:
+                        webhook = wh
+                        break
+            if webhook is None:
+                try:
+                    webhook = await target.create_webhook(name="Restore")
+                except (discord.Forbidden, discord.HTTPException):
+                    return None, None
+            return webhook, thread
+        except (discord.Forbidden, discord.HTTPException):
+            return None, None
+
+    @commands.Cog.listener()
+    async def on_message_delete(self, message: discord.Message):
+        # ignore bot/webhook and non-guild
+        if getattr(message, "webhook_id", None) or getattr(message.author, "bot", False):
+            return
+        if not message.guild:
+            return
+        # counting thread is handled by Counting cog to avoid double restore and to keep DB logic
+        if message.channel.id == COUNTING_THREAD_ID:
+            return
+        # only restore if deleted message was the latest in its channel
+        is_latest = False
+        cached_last = self._last_message_id.get(message.channel.id)
+        if cached_last is not None and cached_last == message.id:
+            is_latest = True
+            # pop so next delete correctly evaluated
+            self._last_message_id.pop(message.channel.id, None)
+        else:
+            try:
+                # fallback: if deleted id is greater than current latest, it was latest before delete
+                async for latest in message.channel.history(limit=1):
+                    if message.id > latest.id:
+                        is_latest = True
+                    break
+                else:
+                    # channel now empty -> deleted was the only/latest
+                    is_latest = True
+            except (discord.Forbidden, discord.HTTPException):
+                return
+        if not is_latest:
+            return
+        if not message.content and not message.attachments and not message.embeds:
+            return
+        # build content to restore
+        content = message.content or ""
+        # include attachment URLs as fallback if we cannot re-upload
+        files: list[discord.File] = []
+        if message.attachments:
+            for att in message.attachments:
+                try:
+                    files.append(await att.to_file())
+                except (discord.HTTPException, discord.Forbidden):
+                    # fallback to url in content
+                    content = (content + f"\n{att.url}").strip() if content else att.url
+
+        webhook, thread = await self._get_webhook_for_channel(message.channel)  # type: ignore
+        if webhook is None:
+            return
+        try:
+            avatar_url = message.author.display_avatar.url if getattr(message.author, "display_avatar", None) else None
+        except Exception:
+            avatar_url = None
+        try:
+            kwargs: dict = {
+                "content": content or None,
+                "username": getattr(message.author, "display_name", str(message.author)),
+                "avatar_url": avatar_url,
+                "allowed_mentions": discord.AllowedMentions(users=False, roles=False, everyone=False),
+            }
+            if files:
+                kwargs["files"] = files
+            if thread is not None:
+                kwargs["thread"] = thread
+            await webhook.send(**kwargs)
+        except (discord.Forbidden, discord.HTTPException):
+            pass
+
+    @commands.Cog.listener()
+    async def on_raw_message_delete(self, payload: discord.RawMessageDeleteEvent):
+        # handle uncached deletes where we still know it was latest via cache
+        if payload.cached_message is not None:
+            return  # already handled by on_message_delete
+        channel_id = payload.channel_id
+        if channel_id == COUNTING_THREAD_ID:
+            return
+        cached_last = self._last_message_id.get(channel_id)
+        if cached_last is None or cached_last != payload.message_id:
+            return
+        # we know it was latest but have no content to restore - cannot webhook without content
+        # pop cache
+        self._last_message_id.pop(channel_id, None)
 
     @commands.Cog.listener()
     async def on_member_join(self, member: discord.Member):
