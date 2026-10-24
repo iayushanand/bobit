@@ -11,7 +11,7 @@ class Counting(commands.Cog):
 
     Rules:
     - Only the thread ``COUNTING_THREAD_ID`` is handled.
-    - Message must be exactly the next integer.
+    - First word must be the next integer (rest of message is ignored, allows split messages).
     - Same user cannot count twice in a row.
     - Uses ``bot.db.counting`` to persist ``count`` and ``last_user_id`` across restarts.
     """
@@ -71,24 +71,8 @@ class Counting(commands.Cog):
             return
 
         stripped = content.strip()
+        # allow split messages: only first word needs to be the number, rest is ignored
         token = stripped.split()[0] if stripped else ""
-        if token != stripped:
-            try:
-                await message.delete()
-            except (discord.Forbidden, discord.NotFound, discord.HTTPException):
-                return
-            try:
-                state = await self._get_state()
-                expected = int(state.get("count", 0)) + 1
-                await message.channel.send(
-                    f"{message.author.mention} please only send the next number. Next is **{expected}**.",
-                    delete_after=5,
-                    allowed_mentions=discord.AllowedMentions(users=False),
-                )
-            except (discord.Forbidden, discord.HTTPException):
-                pass
-            return
-
         if not token.lstrip("-").isdigit():
             try:
                 await message.delete()
@@ -151,10 +135,6 @@ class Counting(commands.Cog):
 
             await self._set_state(number, message.author.id, message.id)
             await self._increment_user(message.author.id)
-            try:
-                await message.add_reaction("✅")
-            except (discord.Forbidden, discord.NotFound, discord.HTTPException):
-                pass
             self.bot.log.info(f"[Counting] {message.author} counted {number} in {COUNTING_THREAD_ID}")
 
     async def _get_webhook_for_counting(self, channel: discord.abc.GuildChannel | discord.Thread) -> tuple[discord.Webhook | None, discord.Thread | None]:
