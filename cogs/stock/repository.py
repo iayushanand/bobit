@@ -8,6 +8,13 @@ global. New documents store ``guild_id = 0`` as sentinel.
 import time
 from typing import Any
 
+_ACTIVITY_TTL = 7200  # 2h
+_PRICE_TTL = 259200  # 3d
+_TRADE_TTL = 604800  # 7d
+_MAX_ACTIVITY_DOCS = 20000
+_MAX_PRICE_PER_STOCK = 500
+_MAX_TRADE_DOCS = 20000
+
 
 def _holding_key(guild_id: int | str, user_id: int | str | None = None, stock_id: str | None = None) -> str:
     """Backwards-compatible key builder.
@@ -48,8 +55,52 @@ class InMemoryRepository:
         self._seq += 1
         return f"{prefix}_{self._seq}_{int(time.time() * 1000)}"
 
+    def _prune_activity(self, now: float | None = None) -> None:
+        if not self.activity:
+            return
+        now = time.time() if now is None else now
+        cutoff = now - _ACTIVITY_TTL
+        self.activity = [a for a in self.activity if float(a.get("ts", 0)) >= cutoff]
+        if len(self.activity) > _MAX_ACTIVITY_DOCS:
+            self.activity = self.activity[-_MAX_ACTIVITY_DOCS:]
+
+    def _prune_prices(self, now: float | None = None) -> None:
+        if not self.prices:
+            return
+        now = time.time() if now is None else now
+        cutoff = now - _PRICE_TTL
+        self.prices = [p for p in self.prices if float(p.get("ts", 0)) >= cutoff]
+        if len(self.prices) > _MAX_PRICE_PER_STOCK * max(1, len(self.stocks)):
+            from collections import defaultdict
+            by_stock: dict[str, list[dict]] = defaultdict(list)
+            for p in self.prices:
+                by_stock[str(p.get("stock_id"))].append(p)
+            pruned: list[dict] = []
+            for lst in by_stock.values():
+                lst.sort(key=lambda x: float(x.get("ts", 0)))
+                pruned.extend(lst[-_MAX_PRICE_PER_STOCK:])
+            pruned.sort(key=lambda x: float(x.get("ts", 0)))
+            self.prices = pruned
+
+    def _prune_trades(self, now: float | None = None) -> None:
+        if not self.trades:
+            return
+        now = time.time() if now is None else now
+        cutoff = now - _TRADE_TTL
+        self.trades = [t for t in self.trades if float(t.get("ts", 0)) >= cutoff]
+        if len(self.trades) > _MAX_TRADE_DOCS:
+            self.trades = self.trades[-_MAX_TRADE_DOCS:]
+
     async def ensure_indexes(self) -> None:
         return None
+
+    async def prune_expired(self, now: float | None = None) -> dict:
+        before = (len(self.activity), len(self.prices), len(self.trades))
+        self._prune_activity(now)
+        self._prune_prices(now)
+        self._prune_trades(now)
+        after = (len(self.activity), len(self.prices), len(self.trades))
+        return {"activity": (before[0], after[0]), "prices": (before[1], after[1]), "trades": (before[2], after[2])}
 
     # -- stocks -- global lookup
     async def find_stock_by_ticker(self, guild_id: int | str | None = None, ticker: str | None = None, *args, **kwargs) -> dict | None:
@@ -270,6 +321,10 @@ class InMemoryRepository:
         doc["_id"] = self._next_id("trade")
         doc["guild_id"] = 0
         self.trades.append(doc)
+        if len(self.trades) % 100 == 0:
+            self._prune_trades(float(doc.get("ts", time.time())))
+        elif len(self.trades) > _MAX_TRADE_DOCS:
+            self._prune_trades(float(doc.get("ts", time.time())))
         return doc["_id"]
 
     async def list_trades(self, guild_id: int | None = None, stock_id: str | None = None,
@@ -296,6 +351,8 @@ class InMemoryRepository:
         doc["_id"] = self._next_id("price")
         doc["guild_id"] = 0
         self.prices.append(doc)
+        if len(self.prices) % 100 == 0:
+            self._prune_prices(float(doc.get("ts", time.time())))
         return doc["_id"]
 
     async def list_price_history(self, stock_id: str, limit: int = 100) -> list[dict]:
@@ -306,6 +363,10 @@ class InMemoryRepository:
         doc = dict(doc)
         doc["guild_id"] = 0
         self.activity.append(doc)
+        if len(self.activity) % 200 == 0:
+            self._prune_activity(float(doc.get("ts", time.time())))
+        elif len(self.activity) > _MAX_ACTIVITY_DOCS:
+            self._prune_activity(float(doc.get("ts", time.time())))
 
     async def activity_since(self, stock_id: str, since_ts: float) -> list[dict]:
         return [a for a in self.activity if a["stock_id"] == stock_id and a["ts"] >= since_ts]
@@ -413,9 +474,43 @@ class MongoRepository:
             await self._db.stock_prices.create_index([("stock_id", 1), ("ts", 1)])
             await self._db.stock_trades.create_index([("ts", -1)])
             await self._db.stock_activity.create_index([("stock_id", 1), ("ts", 1)])
-            # legacy indexes best effort – ensure new ones exist
+            try:
+                await self._db.stock_activity.create_index([("ts", 1)], expireAfterSeconds=_ACTIVITY_TTL)
+            except Exception:
+                pass
+            try:
+                await self._db.stock_prices.create_index([("ts", 1)], expireAfterSeconds=_PRICE_TTL)
+            except Exception:
+                pass
+            try:
+                await self._db.stock_trades.create_index([("ts", 1)], expireAfterSeconds=_TRADE_TTL)
+            except Exception:
+                pass
         except Exception:
-            pass  # best effort; app checks enforce invariants regardless
+            pass
+
+    async def prune_expired(self, now: float | None = None) -> dict:
+        now = time.time() if now is None else now
+        result: dict = {}
+        try:
+            cutoff_a = now - _ACTIVITY_TTL
+            res = await self._db.stock_activity.delete_many({"ts": {"$lt": cutoff_a}})
+            result["activity"] = getattr(res, "deleted_count", 0)
+        except Exception:
+            result["activity"] = 0
+        try:
+            cutoff_p = now - _PRICE_TTL
+            res = await self._db.stock_prices.delete_many({"ts": {"$lt": cutoff_p}})
+            result["prices"] = getattr(res, "deleted_count", 0)
+        except Exception:
+            result["prices"] = 0
+        try:
+            cutoff_t = now - _TRADE_TTL
+            res = await self._db.stock_trades.delete_many({"ts": {"$lt": cutoff_t}})
+            result["trades"] = getattr(res, "deleted_count", 0)
+        except Exception:
+            result["trades"] = 0
+        return result
 
     # -- stocks --
     async def find_stock_by_ticker(self, guild_id: int | str | None = None, ticker: str | None = None, *args, **kwargs) -> dict | None:

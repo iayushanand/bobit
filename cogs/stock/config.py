@@ -75,6 +75,14 @@ class StockConfig:
     excluded_channel_ids: tuple = field(default_factory=tuple)
     command_prefixes: tuple = field(default_factory=lambda: (".",))
 
+    # --- data retention / anti-bloat ---
+    activity_retention_seconds: int = 7200  # 2h TTL for stock_activity
+    price_retention_seconds: int = 259200  # 3 days TTL for stock_prices
+    trade_retention_seconds: int = 604800  # 7 days TTL for stock_trades
+    max_activity_docs: int = 20000
+    max_price_events_per_stock: int = 500
+    max_trade_docs: int = 20000
+
     def __post_init__(self) -> None:
         if self.price_update_interval_minutes <= 0:
             raise ValueError("price_update_interval_minutes must be positive")
@@ -136,6 +144,12 @@ class StockConfig:
             raise ValueError("global_max_price_move_pct must be within (0, 1]")
         if self.global_circuit_halt_seconds < 0:
             raise ValueError("global_circuit_halt_seconds cannot be negative")
+        if self.activity_retention_seconds < self.activity_window_seconds:
+            raise ValueError("activity_retention_seconds must be >= activity_window_seconds")
+        if self.price_retention_seconds < 86400:
+            raise ValueError("price_retention_seconds must be >= 86400")
+        if self.trade_retention_seconds < self.global_volume_window_seconds:
+            raise ValueError("trade_retention_seconds must be >= global_volume_window_seconds")
 
 
 DEFAULT_CONFIG = StockConfig()
