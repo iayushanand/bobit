@@ -341,7 +341,7 @@ def create_quote_buffer(avatar, quote, display_name, username):
         )
 
 
-class WeclomeBanner():
+class WelcomeBanner():
     def __init__(self):
         self.font = {
             "username": ImageFont.truetype("assets/fonts/RougeScript.ttf", 80),
@@ -381,7 +381,3 @@ class WeclomeBanner():
             final.save(image_binary, "PNG", quality=95)
             image_binary.seek(0)
             return discord.File(fp=image_binary, filename="welcome.png")
-
-
-# Alias for correct spelling
-WelcomeBanner = WeclomeBanner
