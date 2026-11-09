@@ -1,6 +1,7 @@
 """Stock market commands (prefix `.stock`)."""
 
 import asyncio
+import math
 import time
 
 import discord
@@ -17,6 +18,7 @@ except ImportError:  # matplotlib missing -> text-only mode, cog still loads
     allocation_chart = movers_chart = price_chart = None  # type: ignore
     CHARTS_AVAILABLE = False
 from .config import DEFAULT_CONFIG, StockConfig, format_cash
+from . import slabbed_fixed_deposit as fd
 from .exceptions import StockError
 from .market_tasks import run_market_update
 from .repository import InMemoryRepository, MongoRepository
@@ -101,6 +103,11 @@ class Stock(commands.Cog):
                 await run_market_update(self.repo, self.config, None)
             except Exception:
                 pass
+            try:
+                if isinstance(self.repo, MongoRepository):
+                    await fd.settle_all(self.bot.db)
+            except Exception:
+                pass
         finally:
             self._updating = False
 
@@ -169,7 +176,7 @@ class Stock(commands.Cog):
     def _help_embed(self) -> discord.Embed:
         e = discord.Embed(
             title="Stocks",
-            description="`.stock create` · `.stock buy` · `.stock sell` · `.stock portfolio` · `.stock info` · `.stock market`",
+            description="`.stock create` · `.stock buy` · `.stock sell` · `.stock portfolio` · `.stock info` · `.stock market` · `.stock fd`",
             color=Colors.BLURPLE,
         )
         return e
@@ -662,6 +669,97 @@ class Stock(commands.Cog):
             await ctx.send(embed=_err_embed(str(exc)))
             return
         await ctx.send(embed=_ok_embed(f"Alert set for `{doc['ticker']}` at {price}"))
+
+    def _fd_db(self):
+        if not isinstance(self.repo, MongoRepository):
+            raise StockError("Fixed deposits need the database to be connected.")
+        return self.bot.db
+
+    def _fd_paid_field(self, e: discord.Embed, paid: list[dict]) -> None:
+        lines = []
+        for p in paid:
+            if p["amount"]:
+                lines.append(f"{format_cash(p['amount'], self.config)} returned")
+            if p["interest"]:
+                lines.append(f"{format_cash(p['interest'], self.config)} interest paid")
+            if p["held"]:
+                lines.append(f"{format_cash(p['held'], self.config)} interest held until you trade again")
+        if lines:
+            e.add_field(name="Fixed deposit updates", value="\n".join(lines), inline=False)
+
+    @stock.group(name="fd", aliases=["deposit", "fixed"], invoke_without_command=True)
+    async def stock_fd(self, ctx: commands.Context, member: discord.Member | None = None) -> None:
+        target = member or ctx.author
+        active, held, paid = await fd.list_fds(self._fd_db(), target.id)
+        e = discord.Embed(title=f"{target.display_name} - Fixed deposits", color=Colors.DARK_EMBED)
+        if active:
+            lines = []
+            for i, d in enumerate(active, start=1):
+                lines.append(f"**#{i}** {format_cash(d['amount'], self.config)} · {d['days']}d · "
+                             f"earned {format_cash(int(d['accrued']), self.config)} · "
+                             f"matures <t:{int(d['matures_at'])}:R>")
+            e.description = "\n".join(lines)
+        else:
+            e.description = "No active fixed deposits. Open one with `.stock fd open <amount> <days>`."
+        if held:
+            total = sum(int(d["interest"]) for d in held)
+            e.add_field(name="Held interest",
+                        value=f"{format_cash(total, self.config)}, released after your next trade "
+                              f"(minus {int(fd.HELD_PENALTY * 100)}%)", inline=False)
+        self._fd_paid_field(e, paid)
+        await ctx.send(embed=e)
+
+    @stock_fd.command(name="open", aliases=["new", "o"])
+    @commands.cooldown(1, 10, commands.BucketType.user)
+    async def stock_fd_open(self, ctx: commands.Context, amount: float, days: int) -> None:
+        if not math.isfinite(amount) or amount <= 0:
+            await ctx.send(embed=_err_embed("Amount must be a positive number."))
+            return
+        amount_minor = int(round(amount * 100))
+        doc, paid = await fd.open_fd(self._fd_db(), ctx.author.id, amount_minor, days)
+        per_30 = doc["period_interest"] * doc["multiplier"]
+        e = _ok_embed("Fixed deposit opened",
+                      f"{format_cash(amount_minor, self.config)} locked for {days} days ({doc['multiplier']}x).")
+        e.add_field(name="Matures", value=f"<t:{int(doc['matures_at'])}:R>")
+        e.add_field(name="Interest", value=f"about {format_cash(int(per_30), self.config)} per "
+                                           f"{fd.RATE_PERIOD_DAYS} active days")
+        self._fd_paid_field(e, paid)
+        await ctx.send(embed=e)
+
+    @stock_fd.command(name="break", aliases=["withdraw", "close", "b"])
+    @commands.cooldown(1, 10, commands.BucketType.user)
+    async def stock_fd_break(self, ctx: commands.Context, number: int) -> None:
+        result, paid = await fd.break_fd(self._fd_db(), ctx.author.id, number)
+        e = _ok_embed("Fixed deposit broken early",
+                      f"Returned {format_cash(result['amount'], self.config)}.")
+        if result["interest"]:
+            e.add_field(name="Interest paid", value=format_cash(result["interest"], self.config))
+        if result["held"]:
+            e.add_field(name="Interest held", value=f"{format_cash(result['held'], self.config)} until you trade again")
+        if result["forfeited"] > 0:
+            e.add_field(name="Early-break penalty", value=f"{format_cash(result['forfeited'], self.config)} forfeited")
+        self._fd_paid_field(e, paid)
+        await ctx.send(embed=e)
+
+    @stock_fd.command(name="rates", aliases=["r", "info"])
+    async def stock_fd_rates(self, ctx: commands.Context) -> None:
+        median = await fd.median_balance(self._fd_db()) or self.config.starting_balance_minor
+        edges = [0] + [int(x * median) for x in fd.SLAB_EDGES]
+        slab_lines = []
+        for i, rate in enumerate(fd.SLAB_RATES):
+            lo = format_cash(edges[i], self.config)
+            label = f"above {lo}" if i == len(edges) - 1 else f"{lo} - {format_cash(edges[i + 1], self.config)}"
+            slab_lines.append(f"{label}: {rate * 100:g}%")
+        e = discord.Embed(title="Fixed deposit rates", color=Colors.BLURPLE)
+        e.add_field(name=f"Slabs (per {fd.RATE_PERIOD_DAYS} active days)", value="\n".join(slab_lines), inline=False)
+        e.add_field(name="Tenures", value="\n".join(f"{d} days: {m}x" for d, m in fd.TENURES.items()))
+        e.add_field(name="Rules", value=(
+            f"Breaking early: completed tenure's multiplier minus {fd.EARLY_BREAK_PENALTY}x\n"
+            f"No interest while the server is quiet for {fd.SERVER_QUIET_HOURS}h\n"
+            f"No trades for {fd.PLAYER_QUIET_HOURS}h: interest held, released minus {int(fd.HELD_PENALTY * 100)}%\n"
+            f"Max {fd.MAX_FDS_PER_PLAYER} FDs, minimum {format_cash(fd.MIN_FD_AMOUNT, self.config)}"
+        ))
+        await ctx.send(embed=e)
 
 
 async def setup(bot: BoBit) -> None:
