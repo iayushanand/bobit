@@ -29,6 +29,7 @@ class Database:
         self.stock_balances = None
         self.stock_watchlists = None
         self.stock_alerts = None
+        self.stock_fixed_deposits = None
 
     async def connect(self):
         if not self.client:
@@ -52,6 +53,7 @@ class Database:
             self.stock_activity = db["stock_activity"]
             self.stock_balances = db["stock_balances"]
             self.stock_watchlists = db["stock_watchlists"]
+            self.stock_fixed_deposits = db["stock_fixed_deposits"]
             self.stock_alerts = db["stock_alerts"]
             log.success(f"Database Connected → {self.db_name}")
 
