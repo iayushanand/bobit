@@ -32,7 +32,7 @@ class Listeners(commands.Cog):
     def __init__(self, bot: BoBit):
         super().__init__()
         self.bot = bot
-        self.banner = WeclomeBanner()
+        self.banner = WelcomeBanner()
         self.update_year_countdown.start()
 
     def cog_unload(self):
